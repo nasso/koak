@@ -1,0 +1,49 @@
+name: koak
+version: 0.1.0.0
+github: "nasso/koak"
+license: BSD3
+author: "nasso"
+maintainer: "nassomails@gmail.com"
+copyright: "2021 nasso"
+
+extra-source-files:
+  - README.md
+  - ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Programming Language
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:
+  Please see the README on GitHub at <https://github.com/nasso/koak#readme>
+
+dependencies:
+  - base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+
+executables:
+  koak-exe:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - koak
+
+tests:
+  koak-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - koak
