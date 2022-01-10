@@ -27,7 +27,7 @@ library:
   source-dirs: src
 
 executables:
-  koak-exe:
+  koak:
     main: Main.hs
     source-dirs: app
     ghc-options:
