@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Syntax
   other-modules:
       Paths_koak
   hs-source-dirs:
