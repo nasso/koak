@@ -1,0 +1,64 @@
+/* This grammar definition uses the W3C EBNF syntax. */
+/* See: https://www.w3.org/TR/2008/REC-xml-20081126/#sec-notation */
+
+KoakProgram ::= Stmt*
+
+Stmt ::= 'def' Defs ';' | CompoundExpr ';'
+
+Defs ::= Prototype CompoundExpr
+
+Prototype ::= UnaryPrototype | BinaryPrototype | FunPrototype
+
+UnaryPrototype ::= 'unary' Identifier Integer? '(' Arg ')' ':' TypeName
+
+BinaryPrototype ::= 'binary' Identifier Integer? '(' Arg Arg ')' ':' TypeName
+
+FunPrototype ::= Identifier PrototypeArgs
+
+PrototypeArgs ::= '(' Arg* ')' ':' TypeName
+
+Arg ::= Identifier ':' TypeName
+
+TypeName ::= 'int' | 'double' | 'void'
+
+CompoundExpr ::= ForExpr | IfExpr | WhileExpr | Expression (':' Expression)*
+
+ForExpr ::= 'for' Expression ',' Expression ',' Expression 'in' CompoundExpr
+
+IfExpr ::= 'if' Expression 'then' CompoundExpr ('else' CompoundExpr)?
+
+WhileExpr ::= 'while' Expression 'do' CompoundExpr
+
+Expression ::= Unary (Binop (Unary | Expression))*
+
+Unary ::= Unop Unary | Postfix
+
+Unop ::= symbol+
+
+Binop ::= symbol+
+
+Postfix ::= Primary CallExpr?
+
+CallExpr ::= '(' (Expression (',' Expression)*)? ')'
+
+Primary ::= Identifier | Literal | '(' CompoundExpr ')'
+
+Identifier ::= (alpha (alphanum | '_')*) - Keyword
+
+Integer ::= digit+
+
+Floating ::= (digit+ '.' digit* | '.' digit+)
+
+Literal ::= Integer | Floating
+
+Keyword ::= 'def' | 'if' | 'then' | 'else' | 'while' | 'do' | 'in' | 'for'
+  | 'binary' | 'unary' | 'int' | 'double' | 'void'
+
+alpha ::= [a-zA-Z]
+
+digit ::= [0-9]
+
+alphanum ::= alpha | digit
+
+symbol ::= '+' | '-' | '*' | '/' | '%' | '=' | '<' | '>' | '!' | '&' | '|' | '^'
+  | '~' | ','
