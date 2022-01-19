@@ -1,4 +1,4 @@
-def factorial(n: integer): integer
+def factorial(n: int): int
     if n > 1
         then n * factorial(n - 1)
         else 1;
