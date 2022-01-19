@@ -1,0 +1,24 @@
+def fizz_buzz(start: int end: int): int
+    for current = start, current <= end, current = current + 1 in
+        (if current % 3 then print("Fizz")
+        else if current % 5 then print("Buzz")
+        else print(current));
+
+fizz_buzz(15);
+/*
+1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz
+*/
