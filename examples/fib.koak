@@ -1,7 +1,10 @@
-def fib(n: int): int
-  if n > 1
-    then fib(n - 1) + fib(n - 2)
-    else 1;
+fn fib(n: i32): i32 {
+  if n > 1 {
+    fib(n - 1) + fib(n - 2)
+  } else {
+    1
+  }
+}
 
-fib(20);
-// 6765
+export let hello = fib(20);
+// 676

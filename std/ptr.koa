@@ -1,0 +1,25 @@
+import memread, memwrite from "core"
+
+type Ptr<T> = struct {
+  addr: usize,
+}
+
+fn Ptr<T>.null(): Ptr<T> {
+  Ptr<T> {
+    addr: 0,
+  }
+}
+
+fn Ptr<T>.read(&self): T {
+  memread<T>(self.addr)
+}
+
+fn Ptr<T>.write(&self, val: T) {
+  memwrite<T>(self.addr, val)
+}
+
+fn Ptr<T>.offset(&self): Ptr<T> {
+  Ptr<T> {
+    addr: self.addr + T.sizeof(),
+  }
+}

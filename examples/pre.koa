@@ -1,0 +1,11 @@
+@def hello = 303;
+
+@log("je suis en train de compiler les array lists: ", @filename);
+
+@if target == "unix" {
+  import brk from "system/unix";
+}
+
+@if ptr_size == 32 {
+  import brk from "system/unix";
+}

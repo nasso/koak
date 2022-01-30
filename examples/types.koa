@@ -1,0 +1,60 @@
+type SomeStruct = struct {
+  some_int: i32,
+  some_str: String,
+};
+
+type SomeGenericStruct<T> = struct {
+  some_int: i32,
+  some_str: String,
+  some_generic: T,
+};
+
+type SomeTaggedUnion = enum {
+  Variant1,
+  Variant2(i32),
+  Variant3 {
+    some_int: i32,
+    some_str: String,
+  },
+};
+
+type SomeTuple = (i32, String);
+
+// strong type alias
+type SomeNewtype = i32;
+
+// weak type alias
+type SomeType ~ i32;
+
+// ----------------------------------------------------------------------------
+
+fn main() {
+  type WeakAlias ~ struct { bar: i32 };
+  type StrongAlias = struct { bar: i32 };
+
+  // the next two lines are equivalent:
+
+  let foo: WeakAlias = WeakAlias { bar: 0 };
+  let foo: struct { bar: i32 } = struct { bar: i32 } { bar: 0 };
+
+  // however, this one cannot be written another way:
+
+  let foo: SomeStruct = SomeStruct { bar: 0 };
+}
+
+// ----------------------------------------------------------------------------
+
+type Dollar = f64;
+type Euro = f64;
+
+fn to_dollar(euro: Euro): Dollar {
+  euro * 1.35
+}
+
+fn to_euro(dollar: Dollar): Euro {
+  dollar / 1.35
+}
+
+let dollar: Dollar = to_dollar(1.0); // ok
+let euro: Euro = to_euro(dollar);    // ok
+let bad: Euro = to_euro(euro);       // error
