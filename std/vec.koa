@@ -1,111 +1,50 @@
+import assert from "std";
+
 export type Vec<T> = struct {
-  data: Ptr<T>,
+  data: *T,
   len: usize,
 };
 
-/// let my_arr = Vec<i32>.empty();
-export fn Vec<T>.empty(): Vec<T> {
-  Vec<T> {
-    data: Ptr<T>.null(),
-    len: 0,
-  }
-}
-
-/// my_arr.get(3);
-export fn Vec<T>.get(&self, i: usize): &T {
-  @if check_bounds {
-    if i >= self.len {
-      error("index out of bounds");
+on Vec<T> {
+  static fn empty(): Vec<T> {
+    Vec<T> {
+      data: null,
+      len: 0,
     }
   }
 
-  self.data.offset(i).read()
-}
-
-/// let mut my_arr = Vec<i32>.empty();
-/// my_arr.set(3, 42);
-export fn Vec<T>.set(&mut self, i: usize, v: T) {
-  @if check_bounds {
-    if i >= self.len {
-      error("index out of bounds");
-    }
+  fn free() {
+    self->data.free();
   }
 
-  self.data.offset(i).write(v);
-}
+  mut fn push(val: *T) {
+    self->data.realloc(self->len + 1);
+    self->set(self->len, val);
+    self->len += 1;
+  }
 
-/// my_arr(3);
-export fn Vec<T>.__call__(&self, i: usize): T {
-  self.get(i)
-}
+  mut fn pop(): *T {
+    @if check_bounds {
+      assert(self->len > 0, "pop on empty Vec");
+    }
 
-// [scratchpad] -> creating an empty vector
-// -----------------------------------------------------------------------------
-//
-// fn empty_array<T>(): Vec<T> {
-//   Vec {
-//     data: null_ptr(),
-//     len: 0,
-//   }
-// }
-//
-// let my_arr = empty_array<i32>();
-//
-// -----------------------------------------------------------------------------
-//
-// fn Vec<T>::new(): Vec<T> {
-//   Vec {
-//     data: null_ptr(),
-//     len: 0,
-//   }
-// }
-//
-// let my_arr = Vec<f32>::new();
-//
-// -----------------------------------------------------------------------------
-//
-// fn Vec<T>(): Vec<T> {
-//     Vec<T> {
-//         data: (),
-//         len: 0,
-//     }
-// }
-//
-// let arr = Vec<u16>();
-//
-// -----------------------------------------------------------------------------
-//
-// fn Vec<T>.empty(): Vec<T> {
-//   Vec {
-//     data: Ptr<T>.null(),
-//     len: 0,
-//   }
-// }
-//
-// let my_arr = Vec<i32>.empty();
-//
-// -----------------------------------------------------------------------------
-//
-// impl Vec<T> {
-//   fn empty() -> Vec<T> {
-//     Vec {
-//       data: null_ptr(),
-//       len: 0,
-//     }
-//   }
-// }
-//
-// let my_arr = Vec<i32>::empty();
-//
-// -----------------------------------------------------------------------------
-//
-// fn Vec.empty(): Vec {
-//   Vec {
-//     data: Ptr.null(),
-//     len: 0,
-//   }
-// }
-//
-// let my_arr = Vec.empty();
-//
-// -----------------------------------------------------------------------------
+    self->len -= 1;
+    self->get(self->len)
+  }
+
+  mut fn get(i: usize): *T {
+    @if check_bounds {
+      assert(i < self->len, "index out of bounds");
+    }
+
+    self->data.offset(i)
+  }
+
+  mut fn set(i: usize, v: *T) {
+    @if check_bounds {
+      assert(i < self->len, "index out of bounds");
+    }
+
+    self->data.offset(i).write(v);
+  }
+}

@@ -1,25 +1,23 @@
-import memread, memwrite from "core"
+export type Ptr<T> ~ *T;
 
-type Ptr<T> = struct {
-  addr: usize,
-}
-
-fn Ptr<T>.null(): Ptr<T> {
-  Ptr<T> {
-    addr: 0,
+on Ptr<T> {
+  fn write(val: *T) {
+    /* built-in */
+    /* memcpy(*self, val, T.sizeof()); */
   }
-}
 
-fn Ptr<T>.read(&self): T {
-  memread<T>(self.addr)
-}
+  fn offset(i: usize): *T {
+    /* built-in */
+    /* *self + i */
+  }
 
-fn Ptr<T>.write(&self, val: T) {
-  memwrite<T>(self.addr, val)
-}
+  mut fn realloc(new_size: usize) {
+    /* built-in */
+    /* *self = realloc(*self, new_size * T.sizeof()); */
+  }
 
-fn Ptr<T>.offset(&self): Ptr<T> {
-  Ptr<T> {
-    addr: self.addr + T.sizeof(),
+  fn free() {
+    /* built-in */
+    /* free(self); */
   }
 }

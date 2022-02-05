@@ -1,64 +1,213 @@
 /* This grammar definition uses the W3C EBNF syntax. */
 /* See: https://www.w3.org/TR/2008/REC-xml-20081126/#sec-notation */
 
-KoakProgram ::= Stmt*
+Program ::= ImportStmt | ExportStmt | Definition
 
-Stmt ::= 'def' Defs ';' | CompoundExpr ';'
+ImportStmt ::= "import" IdentBindings "from" StringLit ";"
 
-Defs ::= Prototype CompoundExpr
+ExportStmt ::= "export" (Definition | IdentBindings) ";"
 
-Prototype ::= UnaryPrototype | BinaryPrototype | FunPrototype
+IdentBindings ::= IdentBinding ("," IdentBinding)*
 
-UnaryPrototype ::= 'unary' Identifier Integer? '(' Arg ')' ':' TypeName
+IdentBinding ::= Ident | Ident "~" Ident
 
-BinaryPrototype ::= 'binary' Identifier Integer? '(' Arg Arg ')' ':' TypeName
+Definition ::= TypeDef | FnDef | OnDef
 
-FunPrototype ::= Identifier PrototypeArgs
+TypeDef ::= "type" Ident [=~] Type ";"
 
-PrototypeArgs ::= '(' Arg* ')' ':' TypeName
+FnDef ::= "fn" Ident "(" FieldDef? ")" ":" Type BlockExpr
 
-Arg ::= Identifier ':' TypeName
+OnDef ::= "on" Type "{" AssociatedDef* "}"
 
-TypeName ::= 'int' | 'double' | 'void'
+AssociatedDef ::=
+  | TypeDef
+  | ("static" | "mut")? FnDef
 
-CompoundExpr ::= ForExpr | IfExpr | WhileExpr | Expression (':' Expression)*
+Formals ::= Formal ("," Formal)* ","?
 
-ForExpr ::= 'for' Expression ',' Expression ',' Expression 'in' CompoundExpr
+Formal ::= Ident ":" Type
 
-IfExpr ::= 'if' Expression 'then' CompoundExpr ('else' CompoundExpr)?
+Expr ::=
+  | Ident
+  | BlockExpr
+  | IfExpr
+  | WhileExpr
+  | ForExpr
+  | LoopExpr
+  | MatchExpr
+  | FnCallExpr
+  | BinopExpr
+  | UnopExpr
+  | LitExpr
+  | "(" Expr ")"
 
-WhileExpr ::= 'while' Expression 'do' CompoundExpr
+BlockExpr ::= "{" (Stmt ";")* Expr? "}"
 
-Expression ::= Unary (Binop (Unary | Expression))*
+IfExpr ::= "if" Expr BlockExpr ("else" "if" BlockExpr)* ("else" Expr)?
 
-Unary ::= Unop Unary | Postfix
+WhileExpr ::= "while" Expr BlockExpr
 
-Unop ::= symbol+
+ForExpr ::= "for" Stmt "," Expr "," Stmt BlockExpr
 
-Binop ::= symbol+
+LoopExpr ::= "loop" BlockExpr
 
-Postfix ::= Primary CallExpr?
+FnCallExpr ::= Expr "(" Args? ")"
 
-CallExpr ::= '(' (Expression (',' Expression)*)? ')'
+Args ::= Expr ("," Expr)* ","?
 
-Primary ::= Identifier | Literal | '(' CompoundExpr ')'
+// TODO: Make precedence explicit in the grammar.
+BinopExpr ::=
+  | Expr "|" Expr
+  | Expr "&" Expr
+  | Expr "^" Expr
+  | Expr "<<" Expr
+  | Expr ">>" Expr
+  | Expr "==" Expr
+  | Expr "!=" Expr
+  | Expr "<=" Expr
+  | Expr ">=" Expr
+  | Expr "<" Expr
+  | Expr ">" Expr
+  | Expr "+" Expr
+  | Expr "-" Expr
+  | Expr "*" Expr
+  | Expr "/" Expr
+  | Expr "%" Expr
+  | Expr "&&" Expr
+  | Expr "||" Expr
+  | Expr "=" Expr
+  | Expr "." Expr
 
-Identifier ::= (alpha (alphanum | '_')*) - Keyword
+UnopExpr ::=
+  | "!" Expr
+  | "-" Expr
+  | "~" Expr
+  | "*" Expr
+  | "&" Expr
 
-Integer ::= digit+
+LitExpr ::=
+  | "null"
+  | "true"
+  | "false"
+  | DecimalLit
+  | HexLit
+  | FloatLit
+  | StringLit
+  | CharLit
 
-Floating ::= (digit+ '.' digit* | '.' digit+)
+Stmt ::=
+  | LetStmt
+  | Expr
+  | "return" Expr?
+  | "break" Expr?
+  | "continue"
 
-Literal ::= Integer | Floating
+LetStmt ::= "let" Pattern (":" Type)? "=" Expr
 
-Keyword ::= 'def' | 'if' | 'then' | 'else' | 'while' | 'do' | 'in' | 'for'
-  | 'binary' | 'unary' | 'int' | 'double' | 'void'
+Pattern ::=
+  | Ident
+  | "mut" Ident
+  | "(" ")"
+  | "(" Pattern ("," Pattern)* ","? ")"
 
-alpha ::= [a-zA-Z]
+Type ::=
+  | "bool"
+  | "u8"
+  | "u16"
+  | "u32"
+  | "u64"
+  | "i8"
+  | "i16"
+  | "i32"
+  | "i64"
+  | "f32"
+  | "f64"
+  | "(" TypeList? ")"
+  | "struct" "{" FieldDefs "}"
+  | "enum" "{" EnumDefs "}"
+  | Ident ("<" TypeList ">")?
+  | "*" Type
 
-digit ::= [0-9]
+EnumCase ::=
+  | Ident
+  | Ident "(" TypeList ")"
+  | Ident "{" FieldDefs "}"
 
-alphanum ::= alpha | digit
+TypeList ::= Type ("," Type)* ","?
 
-symbol ::= '+' | '-' | '*' | '/' | '%' | '=' | '<' | '>' | '!' | '&' | '|' | '^'
-  | '~' | ','
+FieldDefs ::= FieldDef ("," FieldDef)* ","?
+
+FieldDef ::= Ident ":" Type
+
+EnumCases ::= EnumCase ("," EnumCase)* ","?
+
+DecimalLit ::= Digit+
+
+HexLit ::= "0x" HexDigit+
+
+FloatLit ::=
+  | Digit+ "." Digit+
+  | Digit+ "."
+  | "." Digit+
+
+StringLit ::= '"' StringElem* '"'
+
+StringElem ::= [^"] | EscapeSeq
+
+CharLit ::= "'" CharElem "'"
+
+CharElem ::= [^'] | EscapeSeq
+
+EscapeSeq ::=
+  | "\\\\"
+  | '\\"'
+  | "\\'"
+  | "\\0"
+  | "\\n"
+  | "\\r"
+  | "\\t"
+  | "\\b"
+  | "\\u" HexDigit HexDigit HexDigit HexDigit
+
+Digit ::= [0-9]
+
+HexDigit ::= [0-9a-fA-F]
+
+Ident ::= ([a-zA-Z_][a-zA-Z0-9_]*) - Keyword
+
+Keyword ::=
+  | "import"
+  | "from"
+  | "export"
+  | "type"
+  | "struct"
+  | "enum"
+  | "static"
+  | "fn"
+  | "on"
+  | "self"
+  | "mut"
+  | "let"
+  | "if"
+  | "else"
+  | "while"
+  | "for"
+  | "loop"
+  | "match"
+  | "return"
+  | "break"
+  | "continue"
+  | "null"
+  | "true"
+  | "false"
+  | "bool"
+  | "u8"
+  | "u16"
+  | "u32"
+  | "u64"
+  | "i8"
+  | "i16"
+  | "i32"
+  | "i64"
+  | "f32"
+  | "f64"
