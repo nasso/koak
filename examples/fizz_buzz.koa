@@ -1,0 +1,11 @@
+export fn fizz_buzz(start: u64, end: u64) {
+  for let current = start, current <= end, current += 1 {
+    if current % 3 == 0 {
+      println("Fizz");
+    } else if current % 5 == 0 {
+      println("Buzz");
+    } else {
+      println(current);
+    }
+  }
+}

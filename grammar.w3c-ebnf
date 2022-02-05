@@ -51,6 +51,10 @@ ForExpr ::= "for" Stmt "," Expr "," Stmt BlockExpr
 
 LoopExpr ::= "loop" BlockExpr
 
+MatchExpr ::= "match" Expr "{" MatchArm+ "}"
+
+MatchArm ::= Pattern "=>" Expr
+
 FnCallExpr ::= Expr "(" Args? ")"
 
 Args ::= Expr ("," Expr)* ","?
@@ -105,10 +109,22 @@ Stmt ::=
 LetStmt ::= "let" Pattern (":" Type)? "=" Expr
 
 Pattern ::=
+  | "_"
   | Ident
   | "mut" Ident
   | "(" ")"
-  | "(" Pattern ("," Pattern)* ","? ")"
+  | "(" PatternList ")"
+  | Ident "(" PatternList ("," ".."?)? ")"
+  | Ident "{" PatternBindings  ("," ".."?)? "}"
+  | Ident "@" Pattern
+
+PatternList ::= Pattern ("," Pattern)*
+
+PatternBindings ::= PatternBinding ("," PatternBinding)*
+
+PatternBinding ::=
+  | Ident ":" Pattern
+  | "mut"? Ident
 
 Type ::=
   | "bool"
@@ -124,9 +140,15 @@ Type ::=
   | "f64"
   | "(" TypeList? ")"
   | "struct" "{" FieldDefs "}"
-  | "enum" "{" EnumDefs "}"
+  | "enum" "{" EnumCases "}"
   | Ident ("<" TypeList ">")?
   | "*" Type
+
+FieldDefs ::= FieldDef ("," FieldDef)* ","?
+
+FieldDef ::= Ident ":" Type
+
+EnumCases ::= EnumCase ("," EnumCase)* ","?
 
 EnumCase ::=
   | Ident
@@ -134,12 +156,6 @@ EnumCase ::=
   | Ident "{" FieldDefs "}"
 
 TypeList ::= Type ("," Type)* ","?
-
-FieldDefs ::= FieldDef ("," FieldDef)* ","?
-
-FieldDef ::= Ident ":" Type
-
-EnumCases ::= EnumCase ("," EnumCase)* ","?
 
 DecimalLit ::= Digit+
 

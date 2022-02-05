@@ -1,0 +1,34 @@
+import readline from "io";
+import random from "random";
+
+fn ask(): i32 {
+  println("Guess the number: ");
+
+  loop {
+    let input = readline();
+    let input = i32.parse(input);
+
+    match input {
+      Some(input) => break input,
+      None => println("Please enter a number!"),
+    }
+  }
+}
+
+fn main() {
+  let n = random() % 10;
+
+  let mut guess = ask();
+
+  while guess != n {
+    if guess < n {
+      println("Too low!");
+    } else {
+      println("Too high!");
+    }
+
+    guess = ask();
+  }
+
+  println("You got it!");
+}

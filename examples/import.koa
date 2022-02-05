@@ -2,11 +2,11 @@ import args from "process"
 import add ~ sum from "./add"
 
 fn main() {
-  let a: String = args(1);
-  let b: String = args(2);
+  let a = args.get(1);
+  let b = args.get(2);
 
-  let a: i32 = a.parse();
-  let b: i32 = a.parse();
+  let a = i32.parse(a);
+  let b = i32.parse(b);
 
   let result = sum(a, b);
 
