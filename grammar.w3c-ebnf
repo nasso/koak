@@ -13,17 +13,13 @@ IdentBinding ::= Ident | Ident "~" Ident
 
 Definition ::= TypeDef | FnDef | OnDef
 
-TypeDef ::= "type" TypeDefName [=~] Type ";"
-
-TypeDefName ::= Ident GenTypeListDecl?
+TypeDef ::= "type" Ident GenTypeListDecl? [=~] Type ";"
 
 FnDef ::= "fn" Ident GenTypeListDecl? "(" FieldDef? ")" ":" Type BlockExpr
 
-OnDef ::= "on" Type "{" AssociatedDef* "}"
+OnDef ::= "on" Family "{" AssociatedDef* "}"
 
-AssociatedDef ::=
-  | TypeDef
-  | ("static" | "mut")? FnDef
+AssociatedDef ::= TypeDef | ("static" | "mut")? FnDef
 
 GenTypeListDecl ::= "<" Ident ("," Ident)* "," ">"
 
@@ -122,9 +118,7 @@ PatternList ::= Pattern ("," Pattern)*
 
 PatternBindings ::= PatternBinding ("," PatternBinding)*
 
-PatternBinding ::=
-  | Ident ":" Pattern
-  | "mut"? Ident
+PatternBinding ::= Ident ":" Pattern | "mut"? Ident
 
 Type ::=
   | TypeName
@@ -133,19 +127,7 @@ Type ::=
   | "enum" "{" EnumCases "}"
   | "*" Type
 
-TypeName ::=
-  | "bool"
-  | "u8"
-  | "u16"
-  | "u32"
-  | "u64"
-  | "i8"
-  | "i16"
-  | "i32"
-  | "i64"
-  | "f32"
-  | "f64"
-  | Ident ("<" TypeList ">")?
+TypeName ::= Primitive | Ident ("<" TypeList ">")?
 
 FieldDefs ::= FieldDef ("," FieldDef)* ","?
 
@@ -159,6 +141,42 @@ EnumCase ::=
   | Ident "{" FieldDefs "}"
 
 TypeList ::= Type ("," Type)* ","?
+
+Family ::=
+  | FamilyName
+  | "(" FamilyList? ")"
+  | "struct" "{" FamilyFieldDefs "}"
+  | "enum" "{" EnumFamilyCases "}"
+  | "*" Family
+  | Family "~" Ident
+
+FamilyName ::= Primitive | Ident ("<" FamilyList ">")?
+
+FamilyFieldDefs ::= FamilyFieldDef ("," FamilyFieldDef)* ","?
+
+FamilyFieldDef ::= Ident ":" Family
+
+EnumFamilyCases ::= EnumFamilyCase ("," EnumFamilyCase)* ","?
+
+EnumFamilyCase ::=
+  | Ident
+  | Ident "(" FamilyList ")"
+  | Ident "{" FamilyFieldDefs "}"
+
+FamilyList ::= Family ("," Family)* ","?
+
+Primitive ::=
+  | "bool"
+  | "u8"
+  | "u16"
+  | "u32"
+  | "u64"
+  | "i8"
+  | "i16"
+  | "i32"
+  | "i64"
+  | "f32"
+  | "f64"
 
 DecimalLit ::= Digit+
 
@@ -195,6 +213,7 @@ HexDigit ::= [0-9a-fA-F]
 Ident ::= ([a-zA-Z_][a-zA-Z0-9_]*) - Keyword
 
 Keyword ::=
+  | Primitive
   | "import"
   | "from"
   | "export"
@@ -219,14 +238,3 @@ Keyword ::=
   | "null"
   | "true"
   | "false"
-  | "bool"
-  | "u8"
-  | "u16"
-  | "u32"
-  | "u64"
-  | "i8"
-  | "i16"
-  | "i32"
-  | "i64"
-  | "f32"
-  | "f64"

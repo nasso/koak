@@ -58,3 +58,25 @@ fn to_euro(dollar: Dollar): Euro {
 let dollar: Dollar = to_dollar(1.0); // ok
 let euro: Euro = to_euro(dollar);    // ok
 let bad: Euro = to_euro(euro);       // error
+
+// ----------------------------------------------------------------------------
+
+trait Health {
+  fn health(self): u32;
+}
+
+on Health ~ T {
+  fn is_alive(self): bool {
+    self.health() > 0
+  }
+}
+
+type Player = struct {
+  health: u32,
+};
+
+/* TODO: syntax to implement Health for Player */ {
+  fn health(self) -> u32 {
+    self.health
+  }
+}
