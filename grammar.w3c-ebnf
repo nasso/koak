@@ -15,9 +15,9 @@ Definition ::= TypeDef | FnDef | OnDef
 
 TypeDef ::= "type" TypeDefName [=~] Type ";"
 
-TypeDefName ::= Ident ("<" Ident ("," Ident)* "," ">")?
+TypeDefName ::= Ident GenTypeListDecl?
 
-FnDef ::= "fn" Ident "(" FieldDef? ")" ":" Type BlockExpr
+FnDef ::= "fn" Ident GenTypeListDecl? "(" FieldDef? ")" ":" Type BlockExpr
 
 OnDef ::= "on" Type "{" AssociatedDef* "}"
 
@@ -25,9 +25,7 @@ AssociatedDef ::=
   | TypeDef
   | ("static" | "mut")? FnDef
 
-Formals ::= Formal ("," Formal)* ","?
-
-Formal ::= Ident ":" Type
+GenTypeListDecl ::= "<" Ident ("," Ident)* "," ">"
 
 Expr ::=
   | Ident
