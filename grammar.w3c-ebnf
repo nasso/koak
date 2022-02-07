@@ -13,7 +13,9 @@ IdentBinding ::= Ident | Ident "~" Ident
 
 Definition ::= TypeDef | FnDef | OnDef
 
-TypeDef ::= "type" Ident [=~] Type ";"
+TypeDef ::= "type" TypeDefName [=~] Type ";"
+
+TypeDefName ::= Ident ("<" Ident ("," Ident)* "," ">")?
 
 FnDef ::= "fn" Ident "(" FieldDef? ")" ":" Type BlockExpr
 
@@ -127,6 +129,13 @@ PatternBinding ::=
   | "mut"? Ident
 
 Type ::=
+  | TypeName
+  | "(" TypeList? ")"
+  | "struct" "{" FieldDefs "}"
+  | "enum" "{" EnumCases "}"
+  | "*" Type
+
+TypeName ::=
   | "bool"
   | "u8"
   | "u16"
@@ -138,11 +147,7 @@ Type ::=
   | "i64"
   | "f32"
   | "f64"
-  | "(" TypeList? ")"
-  | "struct" "{" FieldDefs "}"
-  | "enum" "{" EnumCases "}"
   | Ident ("<" TypeList ">")?
-  | "*" Type
 
 FieldDefs ::= FieldDef ("," FieldDef)* ","?
 
