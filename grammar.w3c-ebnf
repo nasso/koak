@@ -1,7 +1,7 @@
 /* This grammar definition uses the W3C EBNF syntax. */
 /* See: https://www.w3.org/TR/2008/REC-xml-20081126/#sec-notation */
 
-Program ::= ImportStmt | ExportStmt | Definition
+Program ::= (ImportStmt | ExportStmt | Definition)*
 
 ImportStmt ::= "import" IdentBindings "from" StringLit ";"
 

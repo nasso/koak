@@ -1,0 +1,150 @@
+/* This grammar definition uses the W3C EBNF syntax. */
+/* See: https://www.w3.org/TR/2008/REC-xml-20081126/#sec-notation */
+
+Program ::= Definition*
+
+Definition ::= FnDef
+
+FnDef ::= "fn" Ident "(" FieldDef? ")" ":" Type BlockExpr
+
+Expr ::=
+  | Ident
+  | BlockExpr
+  | IfExpr
+  | WhileExpr
+  | ForExpr
+  | FnCallExpr
+  | BinopExpr
+  | UnopExpr
+  | LitExpr
+  | "(" Expr ")"
+
+BlockExpr ::= "{" (Stmt ";")* Expr? "}"
+
+IfExpr ::= "if" Expr BlockExpr ("else" "if" BlockExpr)* ("else" Expr)?
+
+WhileExpr ::= "while" Expr BlockExpr
+
+ForExpr ::= "for" Stmt "," Expr "," Stmt BlockExpr
+
+FnCallExpr ::= Expr "(" Args? ")"
+
+Args ::= Expr ("," Expr)* ","?
+
+// TODO: Make precedence explicit in the grammar.
+BinopExpr ::=
+  | Expr "|" Expr
+  | Expr "&" Expr
+  | Expr "^" Expr
+  | Expr "<<" Expr
+  | Expr ">>" Expr
+  | Expr "==" Expr
+  | Expr "!=" Expr
+  | Expr "<=" Expr
+  | Expr ">=" Expr
+  | Expr "<" Expr
+  | Expr ">" Expr
+  | Expr "+" Expr
+  | Expr "-" Expr
+  | Expr "*" Expr
+  | Expr "/" Expr
+  | Expr "%" Expr
+  | Expr "&&" Expr
+  | Expr "||" Expr
+  | Expr "=" Expr
+  | Expr "." Expr
+
+UnopExpr ::=
+  | "!" Expr
+  | "-" Expr
+  | "~" Expr
+  | "*" Expr
+  | "&" Expr
+
+LitExpr ::=
+  | "null"
+  | "true"
+  | "false"
+  | DecimalLit
+  | HexLit
+  | FloatLit
+  | StringLit
+  | CharLit
+
+Stmt ::=
+  | LetStmt
+  | Expr
+  | "return" Expr?
+  | "break"
+  | "continue"
+
+LetStmt ::= "let" "mut"? Ident (":" Type)? "=" Expr
+
+Type ::= TypeName
+
+TypeName ::= Primitive
+
+FieldDef ::= Ident ":" Type
+
+Primitive ::=
+  | "bool"
+  | "u8"
+  | "u16"
+  | "u32"
+  | "u64"
+  | "i8"
+  | "i16"
+  | "i32"
+  | "i64"
+  | "f32"
+  | "f64"
+
+DecimalLit ::= Digit+
+
+HexLit ::= "0x" HexDigit+
+
+FloatLit ::=
+  | Digit+ "." Digit+
+  | Digit+ "."
+  | "." Digit+
+
+StringLit ::= '"' StringElem* '"'
+
+StringElem ::= [^"] | EscapeSeq
+
+CharLit ::= "'" CharElem "'"
+
+CharElem ::= [^'] | EscapeSeq
+
+EscapeSeq ::=
+  | "\\\\"
+  | '\\"'
+  | "\\'"
+  | "\\0"
+  | "\\n"
+  | "\\r"
+  | "\\t"
+  | "\\b"
+  | "\\u" HexDigit HexDigit HexDigit HexDigit
+
+Digit ::= [0-9]
+
+HexDigit ::= [0-9a-fA-F]
+
+Ident ::= ([a-zA-Z_][a-zA-Z0-9_]*) - Keyword
+
+Keyword ::=
+  | Primitive
+  | "fn"
+  | "mut"
+  | "let"
+  | "if"
+  | "else"
+  | "while"
+  | "for"
+  | "return"
+  | "break"
+  | "continue"
+  | "null"
+  | "true"
+  | "false"
