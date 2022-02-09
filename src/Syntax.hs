@@ -1,99 +1,101 @@
 module Syntax (module Syntax) where
 
--- | An identifier.
-newtype Ident = Ident String deriving (Show, Eq)
+-- | AST for a program.
+newtype ProgramF e = Program [DefinitionF e] deriving (Eq, Show)
 
--- | A type.
-data Type = Int | Double | Void deriving (Show, Eq)
+-- | An identifier (for a variable, function, etc...).
+newtype Ident = Ident String deriving (Eq, Show)
 
--- | Abstract syntax tree for a program in the Kaleidoscope language.
-newtype Ast = Ast [Statement] deriving (Show, Eq)
+-- | A definition.
+data DefinitionF e
+  = DFn Ident [TBinding] Type (BlockF e)
+  deriving (Eq, Show)
 
--- | Abstract syntax tree for a statement.
-data Statement
-  = -- | A function definition.
-    Def
-      { -- | The name of the function.
-        defName :: Ident,
-        -- | The arguments of the function.
-        defArgs :: [Argument],
-        -- | The return type of the function.
-        defType :: Type,
-        -- | The body of the function.
-        defBody :: ExpressionBlock
-      }
-  | -- | A list of expressions.
-    Block ExpressionBlock
-  deriving (Show, Eq)
+-- | An arbitrary identifier binding (e.g. a function parameter).
+data TBinding = TBinding Ident Type deriving (Eq, Show)
 
--- | Abstract syntax tree for an argument.
-data Argument = Argument Ident Type deriving (Show, Eq)
+-- | AST for an expression.
+data ExprF e
+  = EIdent Ident
+  | EBlock (BlockF e)
+  | EIf e e e
+  | EWhile e (BlockF e)
+  | EFor e e e (BlockF e)
+  | ECall Ident [e]
+  | EBinop Binop e e
+  | EUnop Unop e
+  | ELit Literal
+  deriving (Eq, Show)
 
--- | Abstract syntax tree for an expression block.
-data ExpressionBlock
-  = -- | A list of expressions.
-    Multi [Expression]
-  | -- | For loop.
-    For
-      { -- | The initialisation expression.
-        forInit :: Expression,
-        -- | The condition expression.
-        forCond :: Expression,
-        -- | The update expression.
-        forUpdate :: Expression,
-        -- | The body of the loop.
-        forBody :: ExpressionBlock
-      }
-  | -- | If statement.
-    If
-      { -- | The condition expression.
-        ifCond :: Expression,
-        -- | The body of the if statement.
-        ifBody :: ExpressionBlock,
-        -- | The body of the else statement.
-        ifElse :: Maybe ExpressionBlock
-      }
-  | -- | While loop.
-    While
-      { -- | The condition expression.
-        whileCond :: Expression,
-        -- | The body of the loop.
-        whileBody :: ExpressionBlock
-      }
-  deriving (Show, Eq)
+-- | A list of statements, optionally ending with an expression to evaluate to.
+data BlockF e = BExpr [StmtF e] (Maybe e) deriving (Eq, Show)
 
--- | Abstract syntax tree for an expression.
-data Expression
-  = -- | A unary expression.
-    Unary UnaryOp Expression
-  | -- | A binary expression.
-    Binary BinaryOp Expression Expression
-  | -- | A call expression.
-    Call Primary [Expression]
-  | -- | A primary expression.
-    Primary Primary
-  deriving (Show, Eq)
+-- | A statement (@let@, @return@, or an expression with side-effects).
+data StmtF e
+  = SExpr e
+  | SReturn e
+  | SLet Pattern (Maybe Type) e
+  deriving (Eq, Show)
 
--- | Abstract syntax tree for a primary expression.
-data Primary
-  = -- | A variable reference.
-    Var Ident
-  | -- | A literal.
-    Literal Literal
-  | -- | An expression block in parentheses.
-    Paren ExpressionBlock
-  deriving (Show, Eq)
+-- | A pattern (used by @let@ statements).
+data Pattern
+  = PWildcard
+  | PIdent Ident
+  | PMutIdent Ident
+  deriving (Eq, Show)
 
--- | Abstract syntax tree for a literal.
+-- | A literal value (@12@, @0.2@, @()@, etc...).
 data Literal
-  = -- | A literal integer.
-    IntLiteral Integer
-  | -- | A literal double.
-    DoubleLiteral Double
-  deriving (Show, Eq)
+  = LInt Integer
+  | LFloat Double
+  | LEmpty
+  deriving (Eq, Show)
 
--- | TODO
-data UnaryOp = UnaryOp deriving (Show, Eq)
+-- | A binary operator (@+@, @-@, @*@, etc...).
+data Binop
+  = OAdd
+  | OSub
+  | OMul
+  | ODiv
+  | OEquals
+  | ONotEquals
+  | OLessThan
+  | OGreaterThan
+  | OLessThanEq
+  | OGreaterThanEq
+  | OAssign
+  deriving (Eq, Show)
 
--- | TODO
-data BinaryOp = BinaryOp deriving (Show, Eq)
+-- | An unary operator (@-@, @!@, etc...).
+data Unop = ONot | ONeg deriving (Eq, Show)
+
+-- | A type (@i32@, @f64@, @()@, etc...).
+data Type
+  = TInt32
+  | TFloat64
+  | TEmpty
+  deriving (Eq, Show)
+
+-- | AST for an untyped expression.
+newtype Expr = Expr (ExprF Expr) deriving (Eq, Show)
+
+-- | AST for a fully typed expression.
+newtype ExprT = ExprT (ExprF ExprT, Type) deriving (Eq, Show)
+
+-- | AST for an untyped block expression.
+type Block = BlockF Expr
+
+-- | AST for a fully typed block expression.
+type BlockT = BlockF ExprT
+
+-- | AST for an untyped statement.
+type Stmt = StmtF Expr
+
+-- | AST for a fully typed statement.
+type StmtT = StmtF ExprT
+
+-- | AST for an untyped program.
+type Program = ProgramF Expr
+
+-- | AST for a fully typed program.
+type ProgramT = ProgramF ExprT
