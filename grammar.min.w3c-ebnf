@@ -17,7 +17,7 @@ Expr ::=
   | BinopExpr
   | UnopExpr
   | LitExpr
-  | "(" Expr ")"
+  | "(" Expr? ")"
 
 BlockExpr ::= "{" (Stmt ";")* Expr? "}"
 
@@ -27,9 +27,9 @@ WhileExpr ::= "while" Expr BlockExpr
 
 ForExpr ::= "for" Stmt "," Expr "," Stmt BlockExpr
 
-FnCallExpr ::= Expr "(" Args? ")"
+FnCallExpr ::= Expr "(" ExprList? ")"
 
-Args ::= Expr ("," Expr)* ","?
+ExprList ::= Expr ("," Expr)* ","?
 
 // TODO: Make precedence explicit in the grammar.
 BinopExpr ::=
