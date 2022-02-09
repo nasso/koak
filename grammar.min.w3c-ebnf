@@ -33,37 +33,21 @@ Args ::= Expr ("," Expr)* ","?
 
 // TODO: Make precedence explicit in the grammar.
 BinopExpr ::=
-  | Expr "|" Expr
-  | Expr "&" Expr
-  | Expr "^" Expr
-  | Expr "<<" Expr
-  | Expr ">>" Expr
   | Expr "==" Expr
   | Expr "!=" Expr
-  | Expr "<=" Expr
-  | Expr ">=" Expr
   | Expr "<" Expr
   | Expr ">" Expr
   | Expr "+" Expr
   | Expr "-" Expr
   | Expr "*" Expr
   | Expr "/" Expr
-  | Expr "%" Expr
-  | Expr "&&" Expr
-  | Expr "||" Expr
   | Expr "=" Expr
-  | Expr "." Expr
 
 UnopExpr ::=
   | "!" Expr
   | "-" Expr
-  | "~" Expr
-  | "*" Expr
-  | "&" Expr
 
 LitExpr ::=
-  | "true"
-  | "false"
   | DecimalLit
   | HexLit
   | FloatLit
@@ -72,29 +56,16 @@ Stmt ::=
   | LetStmt
   | Expr
   | "return" Expr?
-  | "break"
-  | "continue"
 
 LetStmt ::= "let" "mut"? Ident (":" Type)? "=" Expr
 
-Type ::= TypeName
+Type ::= TypeName | "(" ")"
 
 TypeName ::= Primitive
 
 FieldDef ::= Ident ":" Type
 
-Primitive ::=
-  | "bool"
-  | "u8"
-  | "u16"
-  | "u32"
-  | "u64"
-  | "i8"
-  | "i16"
-  | "i32"
-  | "i64"
-  | "f32"
-  | "f64"
+Primitive ::= "i32" | "f64"
 
 DecimalLit ::= Digit+
 
@@ -123,5 +94,3 @@ Keyword ::=
   | "return"
   | "break"
   | "continue"
-  | "true"
-  | "false"
