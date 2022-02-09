@@ -25,7 +25,10 @@ source-repository head
 
 library
   exposed-modules:
+      Analyser
+      Compiler
       Lib
+      Parser
       Syntax
   other-modules:
       Paths_koak
