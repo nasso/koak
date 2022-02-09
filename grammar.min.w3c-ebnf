@@ -62,14 +62,11 @@ UnopExpr ::=
   | "&" Expr
 
 LitExpr ::=
-  | "null"
   | "true"
   | "false"
   | DecimalLit
   | HexLit
   | FloatLit
-  | StringLit
-  | CharLit
 
 Stmt ::=
   | LetStmt
@@ -108,25 +105,6 @@ FloatLit ::=
   | Digit+ "."
   | "." Digit+
 
-StringLit ::= '"' StringElem* '"'
-
-StringElem ::= [^"] | EscapeSeq
-
-CharLit ::= "'" CharElem "'"
-
-CharElem ::= [^'] | EscapeSeq
-
-EscapeSeq ::=
-  | "\\\\"
-  | '\\"'
-  | "\\'"
-  | "\\0"
-  | "\\n"
-  | "\\r"
-  | "\\t"
-  | "\\b"
-  | "\\u" HexDigit HexDigit HexDigit HexDigit
-
 Digit ::= [0-9]
 
 HexDigit ::= [0-9a-fA-F]
@@ -145,6 +123,5 @@ Keyword ::=
   | "return"
   | "break"
   | "continue"
-  | "null"
   | "true"
   | "false"
