@@ -1,4 +1,4 @@
-module Syntax (module Syntax) where
+module Syntax where
 
 -- | AST for a program.
 newtype ProgramF e = Program [DefinitionF e] deriving (Eq, Show)
