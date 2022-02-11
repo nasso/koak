@@ -1,5 +1,5 @@
 module Parser
-  ( ParserConfig,
+  ( ParserConfig (..),
     parseProgram,
   )
 where

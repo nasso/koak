@@ -1,6 +1,6 @@
-import Analyser (analyserTests)
-import Compiler (compilerTests)
-import Parser (parserTests)
+import Test.Analyser (analyserTests)
+import Test.Compiler (compilerTests)
+import Test.Parser (parserTests)
 import Test.Tasty (defaultMain, testGroup)
 
 main :: IO ()

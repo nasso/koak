@@ -1,5 +1,5 @@
 module Analyser
-  ( AnalyserConfig,
+  ( AnalyserConfig (..),
     analyseProgram,
   )
 where
