@@ -1,7 +1,7 @@
-module Test.Parser (parserTests) where
+module Test.Koa.Parser (parserTests) where
 
-import Parser
-import Syntax
+import Koa.Parser
+import Koa.Syntax
 import Test.Tasty
 import Test.Tasty.HUnit
 

@@ -25,11 +25,11 @@ source-repository head
 
 library
   exposed-modules:
-      Analyser
-      Compiler
+      Koa.Analyser
+      Koa.Compiler
+      Koa.Parser
+      Koa.Syntax
       Lib
-      Parser
-      Syntax
   other-modules:
       Paths_koak
   hs-source-dirs:
@@ -55,9 +55,9 @@ test-suite koak-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Test.Analyser
-      Test.Compiler
-      Test.Parser
+      Test.Koa.Analyser
+      Test.Koa.Compiler
+      Test.Koa.Parser
       Paths_koak
   hs-source-dirs:
       test

@@ -1,10 +1,10 @@
-module Analyser
+module Koa.Analyser
   ( AnalyserConfig (..),
     analyseProgram,
   )
 where
 
-import Syntax (Program, ProgramT)
+import Koa.Syntax (Program, ProgramT)
 
 -- | Configuration for the analyser.
 data AnalyserConfig = AnalyserConfig

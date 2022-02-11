@@ -1,4 +1,4 @@
-module Compiler
+module Koa.Compiler
   ( CompilerConfig (..),
     CompilationTarget (..),
     compileProgram,
@@ -6,7 +6,7 @@ module Compiler
 where
 
 import Data.Word (Word8)
-import Syntax (ProgramT)
+import Koa.Syntax (ProgramT)
 
 -- | Configuration for the compiler.
 newtype CompilerConfig = CompilerConfig

@@ -1,10 +1,10 @@
-module Parser
+module Koa.Parser
   ( ParserConfig (..),
     parseProgram,
   )
 where
 
-import Syntax (Program)
+import Koa.Syntax (Program)
 
 -- | Parser configuration.
 data ParserConfig = ParserConfig

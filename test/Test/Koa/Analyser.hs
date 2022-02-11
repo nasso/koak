@@ -1,7 +1,7 @@
-module Test.Analyser (analyserTests) where
+module Test.Koa.Analyser (analyserTests) where
 
-import Analyser
-import Syntax
+import Koa.Analyser
+import Koa.Syntax
 import Test.Tasty
 import Test.Tasty.HUnit
 
