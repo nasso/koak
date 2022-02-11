@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.stack
+          key: ${{ hashFiles('stack.yaml') }}
+
+      - name: Build and run tests
+        shell: bash
+        run: |
+          set -ex
+          stack upgrade || curl -sSL https://get.haskellstack.org/ | sh -s - -f
+          stack test --fast --no-terminal
