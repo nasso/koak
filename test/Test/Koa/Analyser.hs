@@ -7,8 +7,8 @@ import Test.Tasty.HUnit
 
 analyserTests :: [TestTree]
 analyserTests =
-  [ testGroup "Valid programs" validPrograms,
-    testGroup "Invalid programs" invalidPrograms
+  [ testGroup "Valid" validPrograms,
+    testGroup "Invalid" invalidPrograms
   ]
 
 validPrograms :: [TestTree]
