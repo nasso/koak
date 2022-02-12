@@ -10,25 +10,25 @@ parserTests =
   [ testCase "empty" $ assertProgram "" (Program []),
     testCase "empty main" $
       assertProgram
-        "fn main(): i32 { }"
+        "fn main(): () { }"
         ( Program
             [ DFn
                 (Ident "main")
                 []
-                TInt32
+                TEmpty
                 (BExpr [] $ Expr $ ELit LEmpty)
             ]
         ),
     testCase "main returning empty" $
       assertProgram
-        "fn main(): i32 {\n\
+        "fn main(): () {\n\
         \  ()\n\
         \}\n"
         ( Program
             [ DFn
                 (Ident "main")
                 []
-                TInt32
+                TEmpty
                 (BExpr [] $ Expr $ ELit LEmpty)
             ]
         ),
