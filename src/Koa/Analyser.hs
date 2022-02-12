@@ -105,11 +105,8 @@ checkBlock expectedTy b =
 
 -- | Analyse a block.
 block :: Block -> Analyser BlockT
-block (BExpr stmts mExpr) =
-  do
-    stmts' <- traverse statement stmts
-    expr' <- traverse expression mExpr
-    pure $ BExpr stmts' expr'
+block (BExpr stmts expr) =
+  BExpr <$> traverse statement stmts <*> expression expr
 
 -- | Analyse a statement.
 statement :: Stmt -> Analyser StmtT
@@ -122,8 +119,7 @@ expression _ = error "not implemented"
 
 -- | Get the type of a block.
 blockType :: BlockT -> Type
-blockType (BExpr _ Nothing) = TEmpty
-blockType (BExpr _ (Just e)) = exprType e
+blockType (BExpr _ e) = exprType e
 
 -- | Get the type of an expression.
 exprType :: ExprT -> Type
