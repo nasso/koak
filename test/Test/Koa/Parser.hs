@@ -8,7 +8,31 @@ import Test.Tasty.HUnit
 parserTests :: [TestTree]
 parserTests =
   [ testCase "empty" $ assertProgram "" (Program []),
-    testCase "minimal" $
+    testCase "empty main" $
+      assertProgram
+        "fn main(): () { }"
+        ( Program
+            [ DFn
+                (Ident "main")
+                []
+                TEmpty
+                (BExpr [] $ Expr $ ELit LEmpty)
+            ]
+        ),
+    testCase "main returning empty" $
+      assertProgram
+        "fn main(): () {\n\
+        \  ()\n\
+        \}\n"
+        ( Program
+            [ DFn
+                (Ident "main")
+                []
+                TEmpty
+                (BExpr [] $ Expr $ ELit LEmpty)
+            ]
+        ),
+    testCase "main returning zero" $
       assertProgram
         "fn main(): i32 {\n\
         \  0\n\
@@ -18,7 +42,7 @@ parserTests =
                 (Ident "main")
                 []
                 TInt32
-                (BExpr [] $ Just $ Expr $ ELit $ LInt 0)
+                (BExpr [] $ Expr $ ELit $ LInt 0)
             ]
         )
   ]
