@@ -3,6 +3,12 @@ module Koa.Syntax where
 -- | AST for a program.
 newtype ProgramF e = Program [DefinitionF e] deriving (Eq, Show)
 
+-- | AST for an untyped program.
+type Program = ProgramF Expr
+
+-- | AST for a fully typed program.
+type ProgramT = ProgramF ExprT
+
 -- | An identifier (for a variable, function, etc...).
 newtype Ident = Ident String deriving (Eq, Show)
 
@@ -10,6 +16,12 @@ newtype Ident = Ident String deriving (Eq, Show)
 data DefinitionF e
   = DFn Ident [TBinding] Type (BlockF e)
   deriving (Eq, Show)
+
+-- | AST for an untyped definition.
+type Definition = DefinitionF Expr
+
+-- | AST for a fully typed definition.
+type DefinitionT = DefinitionF ExprT
 
 -- | An arbitrary identifier binding (e.g. a function parameter).
 data TBinding = TBinding Ident Type deriving (Eq, Show)
@@ -27,8 +39,20 @@ data ExprF e
   | ELit Literal
   deriving (Eq, Show)
 
+-- | AST for an untyped expression.
+newtype Expr = Expr (ExprF Expr) deriving (Eq, Show)
+
+-- | AST for a fully typed expression.
+newtype ExprT = ExprT (ExprF ExprT, Type) deriving (Eq, Show)
+
 -- | A list of statements, optionally ending with an expression to evaluate to.
 data BlockF e = BExpr [StmtF e] (Maybe e) deriving (Eq, Show)
+
+-- | AST for an untyped block expression.
+type Block = BlockF Expr
+
+-- | AST for a fully typed block expression.
+type BlockT = BlockF ExprT
 
 -- | A statement (@let@, @return@, or an expression with side-effects).
 data StmtF e
@@ -36,6 +60,12 @@ data StmtF e
   | SReturn e
   | SLet Pattern (Maybe Type) e
   deriving (Eq, Show)
+
+-- | AST for an untyped statement.
+type Stmt = StmtF Expr
+
+-- | AST for a fully typed statement.
+type StmtT = StmtF ExprT
 
 -- | A pattern (used by @let@ statements).
 data Pattern
@@ -75,27 +105,3 @@ data Type
   | TFloat64
   | TEmpty
   deriving (Eq, Show)
-
--- | AST for an untyped expression.
-newtype Expr = Expr (ExprF Expr) deriving (Eq, Show)
-
--- | AST for a fully typed expression.
-newtype ExprT = ExprT (ExprF ExprT, Type) deriving (Eq, Show)
-
--- | AST for an untyped block expression.
-type Block = BlockF Expr
-
--- | AST for a fully typed block expression.
-type BlockT = BlockF ExprT
-
--- | AST for an untyped statement.
-type Stmt = StmtF Expr
-
--- | AST for a fully typed statement.
-type StmtT = StmtF ExprT
-
--- | AST for an untyped program.
-type Program = ProgramF Expr
-
--- | AST for a fully typed program.
-type ProgramT = ProgramF ExprT
