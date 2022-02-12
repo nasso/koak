@@ -17,37 +17,41 @@ validPrograms =
     testCase "main returning empty" $
       assertValidProgram
         ( Program
-            [ DFn
-                (Ident "main")
-                []
-                TEmpty
-                (BExpr [] $ Expr $ ELit LEmpty)
+            [ DFn (Ident "main") [] TEmpty $
+                BExpr [] $ Expr (ELit LEmpty)
             ]
         )
         ( Program
-            [ DFn
-                (Ident "main")
-                []
-                TEmpty
-                (BExpr [] $ ExprT (ELit LEmpty, TEmpty))
+            [ DFn (Ident "main") [] TEmpty $
+                BExpr [] $ ExprT (ELit LEmpty, TEmpty)
             ]
         ),
     testCase "main returning zero" $
       assertValidProgram
         ( Program
-            [ DFn
-                (Ident "main")
-                []
-                TInt32
-                (BExpr [] $ Expr $ ELit $ LInt 0)
+            [ DFn (Ident "main") [] TInt32 $
+                BExpr [] $ Expr (ELit $ LInt 0)
             ]
         )
         ( Program
-            [ DFn
-                (Ident "main")
-                []
-                TInt32
-                (BExpr [] $ ExprT (ELit $ LInt 0, TInt32))
+            [ DFn (Ident "main") [] TInt32 $
+                BExpr [] $ ExprT (ELit $ LInt 0, TInt32)
+            ]
+        ),
+    testCase "many functions" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $ Expr (ELit $ LInt 0),
+              DFn (Ident "bar") [] TEmpty $
+                BExpr [] $ Expr (ELit LEmpty)
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $ ExprT (ELit $ LInt 0, TInt32),
+              DFn (Ident "bar") [] TEmpty $
+                BExpr [] $ ExprT (ELit LEmpty, TEmpty)
             ]
         )
   ]
@@ -57,11 +61,8 @@ invalidPrograms =
   [ testCase "return type mismatch" $
       assertInvalidProgram
         ( Program
-            [ DFn
-                (Ident "main")
-                []
-                TEmpty
-                (BExpr [] $ Expr $ ELit $ LInt 0)
+            [ DFn (Ident "main") [] TEmpty $
+                BExpr [] $ Expr (ELit $ LInt 0)
             ]
         )
         (ETypeMismatch TEmpty TInt32)
