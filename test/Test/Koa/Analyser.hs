@@ -46,5 +46,11 @@ analyserTests =
         )
   ]
 
+defaultConfig :: AnalyserConfig
+defaultConfig = AnalyserConfig {treatWarningsAsErrors = False}
+
 assertProgram :: Program -> ProgramT -> Assertion
-assertProgram ast checked = analyseProgram AnalyserConfig ast @?= Right checked
+assertProgram ast checked =
+  case analyseProgram defaultConfig ast of
+    Right (c, _) -> c @?= checked
+    _ -> assertFailure "Analyser failed"
