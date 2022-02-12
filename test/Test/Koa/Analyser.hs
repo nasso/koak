@@ -7,9 +7,15 @@ import Test.Tasty.HUnit
 
 analyserTests :: [TestTree]
 analyserTests =
-  [ testCase "empty" $ assertProgram (Program []) (Program []),
+  [ testGroup "Valid programs" validPrograms,
+    testGroup "Invalid programs" invalidPrograms
+  ]
+
+validPrograms :: [TestTree]
+validPrograms =
+  [ testCase "empty" $ assertValidProgram (Program []) (Program []),
     testCase "main returning empty" $
-      assertProgram
+      assertValidProgram
         ( Program
             [ DFn
                 (Ident "main")
@@ -27,7 +33,7 @@ analyserTests =
             ]
         ),
     testCase "main returning zero" $
-      assertProgram
+      assertValidProgram
         ( Program
             [ DFn
                 (Ident "main")
@@ -46,11 +52,32 @@ analyserTests =
         )
   ]
 
+invalidPrograms :: [TestTree]
+invalidPrograms =
+  [ testCase "return type mismatch" $
+      assertInvalidProgram
+        ( Program
+            [ DFn
+                (Ident "main")
+                []
+                TEmpty
+                (BExpr [] $ Expr $ ELit $ LInt 0)
+            ]
+        )
+        (ETypeMismatch TEmpty TInt32)
+  ]
+
 defaultConfig :: AnalyserConfig
 defaultConfig = AnalyserConfig {treatWarningsAsErrors = False}
 
-assertProgram :: Program -> ProgramT -> Assertion
-assertProgram ast checked =
+assertValidProgram :: Program -> ProgramT -> Assertion
+assertValidProgram ast checked =
   case analyseProgram defaultConfig ast of
     Right (c, _) -> c @?= checked
     _ -> assertFailure "Analyser failed"
+
+assertInvalidProgram :: Program -> AnalyserErrorType -> Assertion
+assertInvalidProgram ast expectedErr =
+  case analyseProgram defaultConfig ast of
+    Left (e, _) -> e @?= expectedErr
+    Right _ -> assertFailure "Analyser succeeded"
