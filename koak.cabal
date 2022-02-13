@@ -39,6 +39,7 @@ library
       base >=4.14 && <5
     , mtl >=2.2 && <3
     , transformers >=0.5 && <1
+    , unordered-containers >=0.2 && <1
   default-language: Haskell2010
 
 executable koak
@@ -53,6 +54,7 @@ executable koak
     , koak
     , mtl >=2.2 && <3
     , transformers >=0.5 && <1
+    , unordered-containers >=0.2 && <1
   default-language: Haskell2010
 
 test-suite koak-test
@@ -73,4 +75,5 @@ test-suite koak-test
     , tasty >=1.4 && <2
     , tasty-hunit >=0.10 && <1
     , transformers >=0.5 && <1
+    , unordered-containers >=0.2 && <1
   default-language: Haskell2010

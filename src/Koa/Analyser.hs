@@ -13,9 +13,11 @@ module Koa.Analyser
 where
 
 import Control.Monad.Except
-import Control.Monad.Reader (MonadReader, ReaderT (runReaderT))
+import Control.Monad.Reader
 import Control.Monad.Trans.Writer.Strict
 import Control.Monad.Writer.Strict
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HM
 import Koa.Syntax
 
 -- | Configuration for the analyser.
@@ -34,6 +36,8 @@ data AnalyserErrorType
   = EUndefinedSymbol Ident
   | ETypeMismatch {eExpected :: Type, eActual :: Type}
   | EWarn AnalyserWarningType
+  | ENotAFunction Ident
+  | ENotEnoughArguments Expr
   | EUnimplemented
   deriving (Show, Eq)
 
@@ -56,11 +60,23 @@ type AnalyserError = (AnalyserErrorType, AnalyserLocation)
 type AnalyserResult =
   Either AnalyserError (ProgramT, [AnalyserWarning])
 
+data SymbolType
+  = STFun [Type] Type
+  | STVar Type
+  deriving (Show, Eq)
+
+-- | The read-only environment in which the analyser runs.
+data AnalyserEnv = AnalyserEnv
+  { envCfg :: AnalyserConfig,
+    envCtx :: HashMap String SymbolType
+  }
+  deriving (Show, Eq)
+
 -- | A monad representing the analysis of an AST.
 newtype Analyser a = Analyser
   { runAnalyser ::
       ReaderT
-        AnalyserConfig -- Reads configuration
+        AnalyserEnv
         ( WriterT
             [AnalyserWarning] -- Emits warnings
             (Except AnalyserError) -- Fails on error
@@ -71,7 +87,7 @@ newtype Analyser a = Analyser
     ( Functor,
       Applicative,
       Monad,
-      MonadReader AnalyserConfig,
+      MonadReader AnalyserEnv,
       MonadWriter [AnalyserWarning],
       MonadError AnalyserError
     )
@@ -79,11 +95,24 @@ newtype Analyser a = Analyser
 -- | Runs the static analyser on the given program AST.
 analyseProgram :: AnalyserConfig -> Program -> AnalyserResult
 analyseProgram cfg ast =
-  runExcept $ runWriterT $ runReaderT (runAnalyser $ program ast) cfg
+  runExcept $
+    runWriterT $
+      runReaderT (runAnalyser $ program ast) $
+        AnalyserEnv {envCfg = cfg, envCtx = HM.empty}
 
 -- | Analyse a program.
 program :: Program -> Analyser ProgramT
-program (Program defs) = Program <$> traverse definition defs
+program (Program defs) =
+  withAllDefs defs (Program <$> traverse definition defs)
+
+withAllDefs :: [Definition] -> Analyser a -> Analyser a
+withAllDefs ds a = foldr withDef a ds
+
+withDef :: Definition -> Analyser a -> Analyser a
+withDef (DFn (Ident name) args rety _) = local insertDef
+  where
+    argtys = (\(TBinding _ ty) -> ty) <$> args
+    insertDef e = e {envCtx = HM.insert name (STFun argtys rety) $ envCtx e}
 
 -- | Analyse a definition.
 definition :: Definition -> Analyser DefinitionT
@@ -110,12 +139,27 @@ block (BExpr stmts expr) =
 
 -- | Analyse a statement.
 statement :: Stmt -> Analyser StmtT
-statement = error "not implemented"
+statement = error "not implemented: statement"
 
 -- | Analyse an expression.
 expression :: Expr -> Analyser ExprT
 expression (Expr (ELit lit)) = pure $ ExprT (ELit lit, litType lit)
-expression _ = error "not implemented"
+expression e@(Expr (ECall fn [])) =
+  do
+    (rety, argtys) <- lookupFunction fn
+    when (argtys /= []) $ throwError (ENotEnoughArguments e, LIdent fn)
+    pure $ ExprT (ECall fn [], rety)
+expression _ = error "not implemented: expression"
+
+-- | Look up a function in the analyser context.
+lookupFunction :: Ident -> Analyser (Type, [Type])
+lookupFunction ident@(Ident name) =
+  do
+    ctx <- asks envCtx
+    case HM.lookup name ctx of
+      Just (STFun args rety) -> pure (rety, args)
+      Just _ -> throwError (ENotAFunction ident, LIdent ident)
+      Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
 
 -- | Get the type of a block.
 blockType :: BlockT -> Type
