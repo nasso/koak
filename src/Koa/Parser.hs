@@ -21,19 +21,50 @@ data ParserConfig = ParserConfig
 parseProgram :: ParserConfig -> String -> Either String Program
 parseProgram _ [] = Right $ Program []
 parseProgram _ a =
-  case runStringParser (whitespace *> program <* eof) a of
+  case runStringParser (optional whitespace *> program <* eof) a of
     Parsed v _ _ -> Right v
     NoParse err -> Left $ show err
 
+-- | Parser for a program.
 program :: CharParser p => p Program
 program = Program <$> many (lexeme definition)
 
--- TODO: Parse the return type and the expression blocks
+-- | Parser for a definition.
 definition :: CharParser p => p Definition
 definition =
-  do
-    name <- ident
-    pure $ DFn name [] TEmpty (BExpr [] $ Expr $ ELit LEmpty)
+  DFn
+    <$> (symbol "fn" >> ident)
+    <*> parens (pure [])
+    <*> (symbol ":" >> type')
+    <*> block
+
+type' :: CharParser p => p Type
+type' =
+  TEmpty <$ (symbol "(" >> symbol ")")
+    <|> TInt32 <$ symbol "i32"
+    <|> TFloat64 <$ symbol "f64"
+
+block :: CharParser p => p Block
+block = BExpr [] <$> braces (expr <|> pure (Expr $ ELit LEmpty))
+
+expr :: CharParser p => p Expr
+expr = Expr . ELit <$> literal
+
+literal :: CharParser p => p Literal
+literal =
+  LFloat <$> try floating
+    <|> LInt <$> try integer
+    <|> LEmpty <$ (symbol "(" >> symbol ")")
+
+integer :: CharParser p => p Integer
+integer = lexeme $ read <$> many1 digit
+
+floating :: CharParser p => p Double
+floating =
+  lexeme $ do
+    n <- many1 digit
+    f <- (:) <$> like '.' <*> many1 digit
+    pure $ read $ n ++ f
 
 ident :: CharParser p => p Ident
 ident = lexeme $ Ident <$> ((:) <$> initial <*> many subseq) <?> "identifier"
@@ -44,11 +75,23 @@ ident = lexeme $ Ident <$> ((:) <$> initial <*> many subseq) <?> "identifier"
 alpha :: CharParser p => p Char
 alpha = match isAlpha
 
+digit :: CharParser p => p Char
+digit = match isDigit
+
 alphanum :: CharParser p => p Char
 alphanum = match isAlphaNum
 
+parens :: CharParser p => p a -> p a
+parens p = symbol "(" *> p <* symbol ")"
+
+braces :: CharParser p => p a -> p a
+braces p = symbol "{" *> p <* symbol "}"
+
+symbol :: CharParser p => String -> p ()
+symbol s = void $ lexeme (string s) <?> "\"" ++ s ++ "\""
+
 lexeme :: CharParser p => p a -> p a
-lexeme p = p <* whitespace
+lexeme p = p <* optional whitespace
 
 whitespace :: CharParser p => p ()
-whitespace = void $ many $ match isSpace
+whitespace = void $ some $ match isSpace
