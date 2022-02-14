@@ -6,7 +6,9 @@ module Koa.Parser
   )
 where
 
+import Control.Monad
 import Control.Monad.Parser
+import Data.Char
 import Koa.Syntax
 
 -- | Parser configuration.
@@ -19,7 +21,7 @@ data ParserConfig = ParserConfig
 parseProgram :: ParserConfig -> String -> Either String Program
 parseProgram _ [] = Right $ Program []
 parseProgram _ a =
-  case runStringParser (program <* eof) a of
+  case runStringParser (whitespace *> program <* eof) a of
     Parsed v _ _ -> Right v
     NoParse err -> Left $ show err
 
@@ -28,17 +30,22 @@ program = Program <$> many (lexeme definition)
 
 -- TODO: Parse the return type and the expression blocks
 definition :: CharParser p => p Definition
-definition = do
-  name <- ident
-  return $ DFn name [] TEmpty (BExpr [] $ Expr $ ELit LEmpty)
+definition =
+  do
+    name <- ident
+    pure $ DFn name [] TEmpty (BExpr [] $ Expr $ ELit LEmpty)
 
 ident :: CharParser p => p Ident
-ident = lexeme $ Ident <$> many1 letter
+ident = lexeme $ Ident <$> ((:) <$> alpha <*> many alphanum) <?> "identifier"
 
-letter :: CharParser p => p Char
-letter = oneOf "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"
+alpha :: CharParser p => p Char
+alpha = match isAlpha
+
+alphanum :: CharParser p => p Char
+alphanum = match isAlphaNum
 
 lexeme :: CharParser p => p a -> p a
-lexeme p = spaces *> p <* spaces
-  where
-    spaces = many $ oneOf " \n\r\t"
+lexeme p = p <* whitespace
+
+whitespace :: CharParser p => p ()
+whitespace = void $ many $ match isSpace
