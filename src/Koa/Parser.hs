@@ -36,7 +36,10 @@ definition =
     pure $ DFn name [] TEmpty (BExpr [] $ Expr $ ELit LEmpty)
 
 ident :: CharParser p => p Ident
-ident = lexeme $ Ident <$> ((:) <$> alpha <*> many alphanum) <?> "identifier"
+ident = lexeme $ Ident <$> ((:) <$> initial <*> many subseq) <?> "identifier"
+  where
+    initial = alpha <|> like '_'
+    subseq = alphanum <|> like '_'
 
 alpha :: CharParser p => p Char
 alpha = match isAlpha
