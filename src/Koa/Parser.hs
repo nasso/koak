@@ -21,7 +21,7 @@ parseProgram _ [] = Right $ Program []
 parseProgram _ a =
   case runStringParser (program <* eof) a of
     Parsed v _ _ -> Right v
-    _ -> Left "Parse error"
+    NoParse err -> Left $ show err
 
 program :: CharParser p => p Program
 program = Program <$> many (lexeme definition)
