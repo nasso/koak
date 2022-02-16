@@ -3,6 +3,7 @@
 module Koa.Parser
   ( ParserConfig (..),
     parseProgram,
+    parseExpr
   )
 where
 
@@ -16,6 +17,12 @@ data ParserConfig = ParserConfig
   {
   }
   deriving (Show, Eq)
+
+parseExpr :: ParserConfig -> String -> Either String Expr
+parseExpr _ a =
+  case runStringParser (optional whitespace *> expr <* eof) a of
+    Parsed v _ _ -> Right v
+    NoParse err -> Left $ show err
 
 -- | Parse a program from a string.
 parseProgram :: ParserConfig -> String -> Either String Program
