@@ -38,6 +38,7 @@ library
   build-depends:
       base >=4.14 && <5
     , comparse ==0.2.*
+    , llvm-hs-pure >=9.0 && <10.0
     , mtl ==2.2.*
     , transformers ==0.5.*
     , unordered-containers ==0.2.*
@@ -54,6 +55,7 @@ executable koak
       base >=4.14 && <5
     , comparse ==0.2.*
     , koak
+    , llvm-hs-pure >=9.0 && <10.0
     , mtl ==2.2.*
     , transformers ==0.5.*
     , unordered-containers ==0.2.*
@@ -74,6 +76,7 @@ test-suite koak-test
       base >=4.14 && <5
     , comparse ==0.2.*
     , koak
+    , llvm-hs-pure >=9.0 && <10.0
     , mtl ==2.2.*
     , tasty >=1.4 && <2
     , tasty-hunit >=0.10 && <1

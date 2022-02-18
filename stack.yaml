@@ -43,7 +43,7 @@ extra-deps:
   - text-2.0
   - comparse-0.2.0.0
   - hashable-1.4.0.2
-
+  - attoparsec-0.14.4
 # Override default flag values for local packages and extra-deps
 # flags: {}
 
