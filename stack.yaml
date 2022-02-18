@@ -47,9 +47,8 @@ extra-deps:
   - Cabal-3.6.2.0 # needed by llvm-hs
   - parsec-3.1.15.0 # needed by Cabal
 # Override default flag values for local packages and extra-deps
-flags:
-  llvm-hs:
-    shared-llvm: true
+# flags: {}
+
 # Extra package databases containing global packages
 # extra-package-dbs: []
 
