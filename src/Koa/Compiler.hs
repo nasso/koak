@@ -2,42 +2,52 @@
 
 module Koa.Compiler
   ( CompilerConfig (..),
-    CompilationTarget (..),
-    compileProgram,
+    OutputFormat (..),
+    compileProgramToFile,
   )
 where
 
-import Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as BS
 import Data.Foldable
 import Koa.Syntax
-import qualified LLVM.AST as LLVMAST
+import qualified LLVM.AST as AST
 import qualified LLVM.AST.Type as LLVMType
+import LLVM.Context
 import LLVM.IRBuilder
+import LLVM.Module
+import LLVM.Target
 
 -- | Configuration for the compiler.
 newtype CompilerConfig = CompilerConfig
-  { cfgTarget :: CompilationTarget
+  { cfgFormat :: OutputFormat
   }
   deriving (Show, Eq)
 
--- | A compilation target.
-data CompilationTarget = Assembly | Bitcode | NativeObject deriving (Show, Eq)
+-- | Output format for the compiled program.
+data OutputFormat = Assembly | NativeObject deriving (Show, Eq)
 
 -- | Compile a program.
-compileProgram :: CompilerConfig -> ProgramT -> IO ByteString
-compileProgram _ ast = pure $ BS.pack $ show $ genModule ast
+compileProgramToFile :: FilePath -> CompilerConfig -> ProgramT -> IO ()
+compileProgramToFile path cfg ast =
+  withContext $ \ctx ->
+    withModuleFromAST ctx (genModule ast) $ \modir ->
+      emit (cfgFormat cfg) path modir
 
-genModule :: ProgramT -> LLVMAST.Module
+emit :: OutputFormat -> FilePath -> Module -> IO ()
+emit Assembly path modir = writeLLVMAssemblyToFile (File path) modir
+emit NativeObject path modir =
+  withHostTargetMachineDefault $ \target ->
+    writeObjectToFile target (File path) modir
+
+genModule :: ProgramT -> AST.Module
 genModule (Program defs) = buildModule "__main_module" $ traverse_ genDef defs
 
-genDef :: MonadModuleBuilder m => DefinitionT -> m LLVMAST.Operand
+genDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
 genDef (DFn (Ident name) args rety body) =
-  function (LLVMAST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
+  function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
   where
     arg = error "unimplemented genDef.arg"
 
-genBody :: MonadIRBuilder m => BlockT -> [LLVMAST.Operand] -> m ()
+genBody :: MonadIRBuilder m => BlockT -> [AST.Operand] -> m ()
 genBody (BExpr [] (ExprT (ELit LEmpty, TEmpty))) [] =
   do
     _ <- block `named` "entry"
