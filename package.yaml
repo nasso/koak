@@ -27,6 +27,7 @@ dependencies:
   - unordered-containers >= 0.2 && < 0.3
   - comparse >= 0.2 && < 0.3
   - llvm-hs-pure >= 9.0 && < 10.0
+  - bytestring >= 0.10 && < 0.11
 
 library:
   source-dirs: src
