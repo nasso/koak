@@ -2,6 +2,19 @@
 
 [![Tests](https://github.com/nasso/koak/actions/workflows/tests.yml/badge.svg)](https://github.com/nasso/koak/actions/workflows/tests.yml)
 
+## Building
+
+Make sure you have the development packages for LLVM 9 installed (e.g.
+`llvm-9-dev` on Debian/Ubuntu). `llvm-config --version` should display `9.0.1`.
+For more help on setting up LLVM, see
+[this page](https://github.com/nasso/koak/wiki/LLVM-setup-guide).
+
+Build the project with `stack`:
+
+```sh
+stack build
+```
+
 ## Running tests
 
 ```sh
