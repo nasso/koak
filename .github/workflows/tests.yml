@@ -17,7 +17,7 @@ jobs:
       - name: Install LLVM
         run: |
           sudo apt-get update && sudo apt-get install -y llvm-9-dev
-          sudo update-alternatives \
+          sudo update-alternatives --verbose \
             --install /usr/bin/llvm-config       llvm-config      /usr/bin/llvm-config-9 100 \
             --slave   /usr/bin/llvm-ar           llvm-ar          /usr/bin/llvm-ar-9 \
             --slave   /usr/bin/llvm-as           llvm-as          /usr/bin/llvm-as-9 \
