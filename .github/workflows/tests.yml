@@ -38,6 +38,8 @@ jobs:
             --slave   /usr/bin/llvm-stress       llvm-stress      /usr/bin/llvm-stress-9 \
             --slave   /usr/bin/llvm-symbolizer   llvm-symbolizer  /usr/bin/llvm-symbolizer-9 \
             --slave   /usr/bin/llvm-tblgen       llvm-tblgen      /usr/bin/llvm-tblgen-9
+          llvm-config --version
+          llvm-config --version | grep -q "^9.0.1$"
 
       - name: Cache stack packages
         uses: actions/cache@v2
