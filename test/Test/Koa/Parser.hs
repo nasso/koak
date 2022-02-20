@@ -45,7 +45,7 @@ parserTests =
                 (BExpr [] $ Expr $ ELit $ LInt 0)
             ]
         ),
-    testCase "test function returning a Binop" $
+    testCase "function returning a binary operator" $
       assertProgram
         "fn test(): i32 {\n\
         \  1 + 2\n\
@@ -59,7 +59,7 @@ parserTests =
                   OAdd (Expr $ ELit $ LInt 1) (Expr $ ELit $ LInt 2))
             ]
         ),
-      testCase "test function returning a Binop using a variable" $
+      testCase "function returning a binary operator using a variable" $
         assertProgram
           "fn test(): i32 {\n\
           \  a + b\n\
@@ -73,61 +73,61 @@ parserTests =
                     OAdd (Expr $ EIdent (Ident "a")) (Expr $ EIdent (Ident "b")))
               ]
           ),
-      testCase "simple addition" $
+      testCase "simple addition expression" $
         assertExpr "1 + 2" $
           Expr $ EBinop
             OAdd
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple subtraction" $
+      testCase "simple subtraction expression" $
         assertExpr "1 - 2" $
           Expr $ EBinop
             OSub
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple multiplication" $
+      testCase "simple multiplication expression" $
         assertExpr "1 * 2" $
           Expr $ EBinop
             OMul
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple division" $
+      testCase "simple division expression" $
         assertExpr "1 / 2" $
           Expr $ EBinop
             ODiv
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple not equal" $
+      testCase "simple not equal expression" $
         assertExpr "1 != 2" $
           Expr $ EBinop
             ONotEquals
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple equal" $
+      testCase "simple equal expression" $
         assertExpr "1 == 2" $
           Expr $ EBinop
             OEquals
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple greater than" $
+      testCase "simple greater than expression" $
         assertExpr "1 > 2" $
           Expr $ EBinop
             OGreaterThan
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple greater than or equal" $
+      testCase "simple greater than or equal expression" $
         assertExpr "1 >= 2" $
           Expr $ EBinop
             OGreaterThanEq
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple less than" $
+      testCase "simple less than expression" $
         assertExpr "1 < 2" $
           Expr $ EBinop
             OLessThan
             (Expr $ ELit $ LInt 1)
             (Expr $ ELit $ LInt 2),
-      testCase "simple less than or equal" $
+      testCase "simple less than or equal expression" $
         assertExpr "1 <= 2" $
           Expr $ EBinop
             OLessThanEq
