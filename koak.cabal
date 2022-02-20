@@ -50,6 +50,7 @@ library
 executable koak
   main-is: Main.hs
   other-modules:
+      Args
       Paths_koak
   hs-source-dirs:
       app
@@ -58,6 +59,7 @@ executable koak
       base >=4.14 && <5
     , bytestring ==0.10.*
     , comparse ==0.2.*
+    , filepath ==1.4.*
     , koak
     , llvm-hs >=9.0.1 && <9.1
     , llvm-hs-pure ==9.0.*

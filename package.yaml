@@ -46,6 +46,7 @@ executables:
       - -Wall
     dependencies:
       - koak
+      - filepath >= 1.4 && < 1.5
 
 tests:
   koak-test:

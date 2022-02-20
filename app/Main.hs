@@ -1,118 +1,104 @@
-{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Main where
 
-import Options.Applicative
+import Args
+import Control.Monad.Except
+import Control.Monad.Reader
+import Data.Foldable
+import Data.Maybe
+import Koa.Analyser
+import Koa.Parser
+import Koa.Syntax
+import System.Exit
+import System.FilePath
+import System.IO
 
--- | Command line options
-data Options = Options
-  { -- | Output mode
-    optOutputMode :: OutputMode,
-    -- | Stages to run
-    optStage :: Stage,
-    -- | Input file paths
-    optInputPaths :: [FilePath],
-    -- | Output file path
-    optOutputPath :: Maybe FilePath
-  }
-  deriving (Eq, Show)
-
--- | An output mode
-data OutputMode
-  = -- | Normal output
-    Normal
-  | -- | Verbose output
-    Verbose
-  | -- | Quiet output
-    Quiet
-  deriving (Eq, Show)
-
--- | A stage
-data Stage
-  = -- | Parser only
-    Parse
-  | -- | Parser + type checker
-    Check
-  | -- | Parser + type checker + compiler
-    Compile
-  | -- | Parser + type checker + compiler + linker
-    Link
-  deriving (Eq, Show)
+newtype App a = App {runApp :: ReaderT Args (ExceptT () IO) a}
+  deriving
+    ( Functor,
+      Applicative,
+      Monad,
+      MonadIO,
+      MonadReader Args,
+      MonadError ()
+    )
 
 -- | The main entry point
 main :: IO ()
-main = execParser opts >>= print
+main =
+  do
+    args <- parseArgs
+    exit <- runExceptT (runReaderT (runApp app) args)
+    case exit of
+      Left _ -> exitFailure
+      Right _ -> exitSuccess
 
--- | Options parser
-opts :: ParserInfo Options
-opts =
-  info
-    (Options <$> outputMode <*> stage <*> inputFiles <*> outputFile <**> helper)
-    ( fullDesc
-        <> header "koak - The Koa compiler"
-        <> progDesc "Compile and link Koa source files."
-    )
+-- | The application logic
+app :: App ()
+app =
+  do
+    stage <- asks argStage
+    case stage of
+      Parse p -> parse p
+      Check p -> check p
+      Compile p -> compile p
+      Link ps -> link ps
 
--- | Output flags parser
-outputMode :: Parser OutputMode
-outputMode = verboseFlag <|> quietFlag <|> pure Normal
+-- | Parse a program and write the AST to the output file
+parse :: FilePath -> App ()
+parse p = parsed p >>= outputStr (p -<.> "txt") . show
 
--- | "Verbose" flag parser
-verboseFlag :: Parser OutputMode
-verboseFlag =
-  flag' Verbose $
-    help "Verbose output"
-      <> long "verbose"
-      <> short 'v'
+-- | Parse and type-check a program and write the typed AST to the output file
+check :: FilePath -> App ()
+check p = checked p >>= outputStr (p -<.> "txt") . show
 
--- | "Quiet" flag parser
-quietFlag :: Parser OutputMode
-quietFlag =
-  flag' Quiet $
-    help "Quiet output"
-      <> long "quiet"
-      <> short 'q'
+-- | Parse, type-check and compile a program and write the compiled binary to
+-- the output file
+compile :: FilePath -> App ()
+compile = error "unimplemented compile"
 
--- | Stage flags parser
-stage :: Parser Stage
-stage = parseFlag <|> checkFlag <|> compileFlag <|> pure Link
+-- | Link a set of compiled programs and write the resulting binary to the
+-- output file
+link :: [FilePath] -> App ()
+link = error "unimplemented link"
 
--- | "Parse" flag parser
-parseFlag :: Parser Stage
-parseFlag =
-  flag' Parse $
-    help "Parse the input files"
-      <> long "parse"
-      <> short 'p'
+-- | Parse a file into an AST
+parsed :: FilePath -> App Program
+parsed p =
+  do
+    src <- liftIO (readFile p)
+    case parseProgram ParserConfig src of
+      Left s -> logError (p ++ ":\n" ++ s) >> throwError ()
+      Right ast -> pure ast
 
--- | "Check" flag parser
-checkFlag :: Parser Stage
-checkFlag =
-  flag' Check $
-    help "Type check the input files"
-      <> long "check"
-      <> short 't'
+-- | Parse and type-check a file into a typed AST
+checked :: FilePath -> App ProgramT
+checked p =
+  do
+    cfg <- analyserConfig
+    ast <- parsed p
+    case analyseProgram cfg ast of
+      Left s -> logError (p ++ ":\n" ++ show s) >> throwError ()
+      Right (tast, warnings) -> tast <$ traverse_ warn (show <$> warnings)
+  where
+    warn s = logWarn (p ++ ":\n" ++ s)
 
--- | "Compile" flag parser
-compileFlag :: Parser Stage
-compileFlag =
-  flag' Compile $
-    help "Compile the input files without linking them"
-      <> long "compile"
-      <> short 'c'
+-- | The analysis configuration
+analyserConfig :: App AnalyserConfig
+analyserConfig = pure $ AnalyserConfig False
 
--- | Input file paths parser
-inputFiles :: Parser [FilePath]
-inputFiles =
-  some . strArgument $
-    help "Input files"
-      <> metavar "FILES..."
+-- | Write data to the output file
+outputStr :: FilePath -> String -> App ()
+outputStr def str =
+  do
+    out <- asks (fromMaybe def . argOutputPath)
+    liftIO (writeFile out str)
 
--- | Output file argument parser
-outputFile :: Parser (Maybe FilePath)
-outputFile =
-  optional . strOption $
-    help "Output file"
-      <> metavar "FILE"
-      <> long "output"
-      <> short 'o'
+-- | Display an error message
+logError :: String -> App ()
+logError msg = liftIO $ hPutStrLn stderr $ "error: " ++ msg
+
+-- | Display a warning message
+logWarn :: String -> App ()
+logWarn msg = liftIO $ hPutStrLn stderr $ "warning: " ++ msg
