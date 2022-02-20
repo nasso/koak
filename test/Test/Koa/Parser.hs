@@ -62,8 +62,6 @@ parserTests =
       testCase "test function returning a Binop using a variable" $
         assertProgram
           "fn test(): i32 {\n\
-          \  let a = 1;\n\
-          \  let b = 2;\n\
           \  a + b\n\
           \}\n"
           ( Program
@@ -71,10 +69,7 @@ parserTests =
                   (Ident "test")
                   []
                   TInt32
-                  (BExpr [
-                    SLet (PIdent $ Ident "a") Nothing (Expr $ ELit $ LInt 1)
-                  , SLet (PIdent $ Ident "b") Nothing (Expr $ ELit $ LInt 2)
-                  ] $ Expr $ EBinop
+                  (BExpr [] $ Expr $ EBinop
                     OAdd (Expr $ EIdent (Ident "a")) (Expr $ EIdent (Ident "b")))
               ]
           ),
