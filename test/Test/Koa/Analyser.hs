@@ -219,7 +219,21 @@ invalidPrograms =
                     )
             ]
         )
-        (EInvalidBinop OLessThan TEmpty TEmpty)
+        (EInvalidBinop OLessThan TEmpty TEmpty),
+    testCase "can't use < on booleans" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TBool $
+                BExpr [] $
+                  Expr
+                    ( EBinop
+                        OLessThan
+                        (Expr $ ELit $ LBool True)
+                        (Expr $ ELit $ LBool False)
+                    )
+            ]
+        )
+        (EInvalidBinop OLessThan TBool TBool)
   ]
 
 defaultConfig :: AnalyserConfig
