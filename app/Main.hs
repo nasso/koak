@@ -69,7 +69,7 @@ parsed p =
   do
     src <- liftIO (readFile p)
     case parseProgram ParserConfig src of
-      Left s -> logError (p ++ ":\n" ++ s) >> throwError ()
+      Left s -> logError (p ++ ":" ++ s) >> throwError ()
       Right ast -> pure ast
 
 -- | Parse and type-check a file into a typed AST
