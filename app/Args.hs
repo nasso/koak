@@ -64,7 +64,7 @@ opts =
     )
     $ fullDesc
       <> header "koak - The Koa compiler"
-      <> progDesc "Compile and link Koa source files."
+      <> progDesc "Compile Koa source files."
 
 -- | Output flags parser
 outputMode :: Parser OutputMode
