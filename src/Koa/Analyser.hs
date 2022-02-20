@@ -178,3 +178,4 @@ litType :: Literal -> Type
 litType LEmpty = TEmpty
 litType (LInt _) = TInt32
 litType (LFloat _) = TFloat64
+litType (LBool _) = TBool

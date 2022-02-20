@@ -79,6 +79,7 @@ data Pattern
 data Literal
   = LInt Integer
   | LFloat Double
+  | LBool Bool
   | LEmpty
   deriving (Eq, Show)
 

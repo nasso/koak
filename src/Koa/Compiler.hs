@@ -66,3 +66,4 @@ llvmType :: Type -> LLVMType.Type
 llvmType TInt32 = LLVMType.i32
 llvmType TFloat64 = LLVMType.double
 llvmType TEmpty = LLVMType.void
+llvmType TBool = LLVMType.i1
