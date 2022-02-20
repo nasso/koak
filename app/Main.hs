@@ -8,6 +8,7 @@ import Control.Monad.Reader
 import Data.Foldable
 import Data.Maybe
 import Koa.Analyser
+import Koa.Compiler
 import Koa.Parser
 import Koa.Syntax
 import System.Exit
@@ -56,7 +57,12 @@ check p = checked p >>= outputStr (p -<.> "txt") . show
 -- | Parse, type-check and compile a program and write the compiled binary to
 -- the output file
 compile :: FilePath -> App ()
-compile = error "unimplemented compile"
+compile p =
+  do
+    tast <- checked p
+    out <- outputPath (p -<.> "o")
+    cfg <- asks argCompilerConfig
+    liftIO $ compileProgramToFile out cfg tast
 
 -- | Link a set of compiled programs and write the resulting binary to the
 -- output file
@@ -76,7 +82,7 @@ parsed p =
 checked :: FilePath -> App ProgramT
 checked p =
   do
-    cfg <- analyserConfig
+    cfg <- asks argAnalyserConfig
     ast <- parsed p
     case analyseProgram cfg ast of
       Left s -> logError (p ++ ":\n" ++ show s) >> throwError ()
@@ -84,16 +90,16 @@ checked p =
   where
     warn s = logWarn (p ++ ":\n" ++ s)
 
--- | The analysis configuration
-analyserConfig :: App AnalyserConfig
-analyserConfig = pure $ AnalyserConfig False
-
 -- | Write data to the output file
 outputStr :: FilePath -> String -> App ()
 outputStr def str =
   do
-    out <- asks (fromMaybe def . argOutputPath)
+    out <- outputPath def
     liftIO (writeFile out str)
+
+-- | Get the output file path or a default.
+outputPath :: FilePath -> App FilePath
+outputPath defaultPath = asks (fromMaybe defaultPath . argOutputPath)
 
 -- | Display an error message
 logError :: String -> App ()

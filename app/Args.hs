@@ -8,6 +8,9 @@ module Args
   )
 where
 
+import Koa.Analyser
+import Koa.Compiler
+import Koa.Parser
 import Options.Applicative
 
 -- | Command line arguments
@@ -17,7 +20,13 @@ data Args = Args
     -- | Stages to run
     argStage :: Stage,
     -- | Output file path
-    argOutputPath :: Maybe FilePath
+    argOutputPath :: Maybe FilePath,
+    -- | Parser configuration
+    argParserConfig :: ParserConfig,
+    -- | Analyser configuration
+    argAnalyserConfig :: AnalyserConfig,
+    -- | Compiler configuration
+    argCompilerConfig :: CompilerConfig
   }
   deriving (Eq, Show)
 
@@ -50,11 +59,14 @@ parseArgs = execParser opts
 opts :: ParserInfo Args
 opts =
   info
-    (Args <$> outputMode <*> stage <*> outputFile <**> helper)
-    ( fullDesc
-        <> header "koak - The Koa compiler"
-        <> progDesc "Compile and link Koa source files."
+    ( Args <$> outputMode <*> stage <*> outputFile
+        <*> parserCfg
+        <*> analyserCfg
+        <*> compilerCfg <**> helper
     )
+    $ fullDesc
+      <> header "koak - The Koa compiler"
+      <> progDesc "Compile and link Koa source files."
 
 -- | Output flags parser
 outputMode :: Parser OutputMode
@@ -130,3 +142,15 @@ outputFile =
       <> metavar "FILE"
       <> long "output"
       <> short 'o'
+
+-- | Parser configuration parser
+parserCfg :: Parser ParserConfig
+parserCfg = pure ParserConfig
+
+-- | Analyser configuration parser
+analyserCfg :: Parser AnalyserConfig
+analyserCfg = pure $ AnalyserConfig False
+
+-- | Compiler configuration parser
+compilerCfg :: Parser CompilerConfig
+compilerCfg = pure $ CompilerConfig NativeObject
