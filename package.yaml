@@ -29,6 +29,7 @@ dependencies:
   - llvm-hs >= 9.0.1 && < 9.1
   - llvm-hs-pure >= 9.0 && < 9.1
   - bytestring >= 0.10 && < 0.11
+  - optparse-applicative >= 0.16 && < 0.18
 
 library:
   source-dirs: src
@@ -45,6 +46,7 @@ executables:
       - -Wall
     dependencies:
       - koak
+      - filepath >= 1.4 && < 1.5
 
 tests:
   koak-test:

@@ -22,7 +22,7 @@ import Koa.Syntax
 
 -- | Configuration for the analyser.
 newtype AnalyserConfig = AnalyserConfig
-  { treatWarningsAsErrors :: Bool
+  { cfgTreatWarningsAsErrors :: Bool
   }
   deriving (Show, Eq)
 

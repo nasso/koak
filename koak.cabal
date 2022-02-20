@@ -42,6 +42,7 @@ library
     , llvm-hs >=9.0.1 && <9.1
     , llvm-hs-pure ==9.0.*
     , mtl ==2.2.*
+    , optparse-applicative >=0.16 && <0.18
     , transformers ==0.5.*
     , unordered-containers ==0.2.*
   default-language: Haskell2010
@@ -49,6 +50,7 @@ library
 executable koak
   main-is: Main.hs
   other-modules:
+      Args
       Paths_koak
   hs-source-dirs:
       app
@@ -57,10 +59,12 @@ executable koak
       base >=4.14 && <5
     , bytestring ==0.10.*
     , comparse ==0.2.*
+    , filepath ==1.4.*
     , koak
     , llvm-hs >=9.0.1 && <9.1
     , llvm-hs-pure ==9.0.*
     , mtl ==2.2.*
+    , optparse-applicative >=0.16 && <0.18
     , transformers ==0.5.*
     , unordered-containers ==0.2.*
   default-language: Haskell2010
@@ -84,6 +88,7 @@ test-suite koak-test
     , llvm-hs >=9.0.1 && <9.1
     , llvm-hs-pure ==9.0.*
     , mtl ==2.2.*
+    , optparse-applicative >=0.16 && <0.18
     , tasty >=1.4 && <2
     , tasty-hunit >=0.10 && <1
     , transformers ==0.5.*
