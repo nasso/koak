@@ -35,7 +35,7 @@ data AnalyserWarningType
 data AnalyserErrorType
   = EUndefinedSymbol Ident
   | ETypeMismatch {eExpected :: Type, eActual :: Type}
-  | EIncompatibleTypes {eLeft :: Type, eRight :: Type}
+  | EInvalidBinop Binop Type Type
   | EWarn AnalyserWarningType
   | ENotAFunction Ident
   | ENotEnoughArguments Expr
@@ -150,6 +150,13 @@ expression e@(Expr (ECall fn [])) =
     (rety, argtys) <- lookupFunction fn
     when (argtys /= []) $ throwError (ENotEnoughArguments e, LIdent fn)
     pure $ ExprT (ECall fn [], rety)
+expression e@(Expr (EBinop op lhs rhs)) =
+  do
+    lhs'@(ExprT (_, lhsTy)) <- expression lhs
+    rhs'@(ExprT (_, rhsTy)) <- expression rhs
+    case binopOutput op lhsTy rhsTy of
+      Nothing -> throwError (EInvalidBinop op lhsTy rhsTy, LExpr e)
+      Just outputTy -> pure $ ExprT (EBinop op lhs' rhs', outputTy)
 expression _ = error "not implemented: expression"
 
 -- | Look up a function in the analyser context.
@@ -164,11 +171,7 @@ lookupFunction ident@(Ident name) =
 
 -- | Get the type of a block.
 blockType :: BlockT -> Type
-blockType (BExpr _ e) = exprType e
-
--- | Get the type of an expression.
-exprType :: ExprT -> Type
-exprType (ExprT (_, t)) = t
+blockType (BExpr _ (ExprT (_, ty))) = ty
 
 -- | Get the type of a literal.
 --
@@ -180,3 +183,31 @@ litType LEmpty = TEmpty
 litType (LInt _) = TInt32
 litType (LFloat _) = TFloat64
 litType (LBool _) = TBool
+
+-- | The output type of a binary operator, given the types of its operands.
+binopOutput :: Binop -> Type -> Type -> Maybe Type
+binopOutput OEquals lhs rhs | lhs == rhs = Just TBool
+binopOutput ONotEquals lhs rhs | lhs == rhs = Just TBool
+binopOutput OAdd lhs rhs | isNum lhs && lhs == rhs = Just lhs
+binopOutput OSub lhs rhs | isNum lhs && lhs == rhs = Just lhs
+binopOutput OMul lhs rhs | isNum lhs && lhs == rhs = Just lhs
+binopOutput ODiv lhs rhs | isNum lhs && lhs == rhs = Just lhs
+binopOutput OGreaterThan lhs rhs | isOrd lhs && lhs == rhs = Just TBool
+binopOutput OGreaterThanEq lhs rhs | isOrd lhs && lhs == rhs = Just TBool
+binopOutput OLessThan lhs rhs | isOrd lhs && lhs == rhs = Just TBool
+binopOutput OLessThanEq lhs rhs | isOrd lhs && lhs == rhs = Just TBool
+binopOutput _ _ _ = Nothing
+
+-- | Determine if a type is a numeric type.
+isNum :: Type -> Bool
+isNum TEmpty = False
+isNum TBool = False
+isNum TInt32 = True
+isNum TFloat64 = True
+
+-- | Determine if a type is an ordinal type.
+isOrd :: Type -> Bool
+isOrd TEmpty = False
+isOrd TBool = False
+isOrd TInt32 = True
+isOrd TFloat64 = True

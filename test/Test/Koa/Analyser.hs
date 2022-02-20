@@ -122,6 +122,31 @@ validPrograms =
                       TInt32
                     )
             ]
+        ),
+    testCase "i32 == i32 is a boolean" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TBool $
+                BExpr [] $
+                  Expr
+                    ( EBinop
+                        OEquals
+                        (Expr $ ELit $ LInt 1)
+                        (Expr $ ELit $ LInt 2)
+                    )
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TBool $
+                BExpr [] $
+                  ExprT
+                    ( EBinop
+                        OEquals
+                        (ExprT (ELit $ LInt 1, TInt32))
+                        (ExprT (ELit $ LInt 2, TInt32)),
+                      TBool
+                    )
+            ]
         )
   ]
 
@@ -166,7 +191,35 @@ invalidPrograms =
                     )
             ]
         )
-        (EIncompatibleTypes TInt32 TFloat64)
+        (EInvalidBinop OAdd TInt32 TFloat64),
+    testCase "can't add empties together" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TEmpty $
+                BExpr [] $
+                  Expr
+                    ( EBinop
+                        OAdd
+                        (Expr $ ELit LEmpty)
+                        (Expr $ ELit LEmpty)
+                    )
+            ]
+        )
+        (EInvalidBinop OAdd TEmpty TEmpty),
+    testCase "can't use < on empties" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TBool $
+                BExpr [] $
+                  Expr
+                    ( EBinop
+                        OLessThan
+                        (Expr $ ELit LEmpty)
+                        (Expr $ ELit LEmpty)
+                    )
+            ]
+        )
+        (EInvalidBinop OLessThan TEmpty TEmpty)
   ]
 
 defaultConfig :: AnalyserConfig
