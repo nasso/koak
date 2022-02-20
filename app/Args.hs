@@ -48,8 +48,6 @@ data Stage
     Check FilePath
   | -- | Parser + type checker + compiler
     Compile FilePath
-  | -- | Parser + type checker + compiler + linker
-    Link [FilePath]
   deriving (Eq, Show)
 
 parseArgs :: IO Args
@@ -90,14 +88,14 @@ quietFlag =
 
 -- | Stage flags parser
 stage :: Parser Stage
-stage = parseFlag <|> checkFlag <|> compileFlag <|> linkArgs
+stage = parseFlag <|> checkFlag <|> compileFlag
 
 -- | "Parse" flag parser
 parseFlag :: Parser Stage
 parseFlag =
   Parse
     <$> strOption
-      ( help "Parse the input files"
+      ( help "Parse the given file"
           <> metavar "FILE"
           <> long "parse"
           <> short 'p'
@@ -108,7 +106,7 @@ checkFlag :: Parser Stage
 checkFlag =
   Check
     <$> strOption
-      ( help "Type check the input files"
+      ( help "Type-check the given file"
           <> metavar "FILE"
           <> long "check"
           <> short 't'
@@ -119,26 +117,17 @@ compileFlag :: Parser Stage
 compileFlag =
   Compile
     <$> strOption
-      ( help "Compile the input files without linking them"
+      ( help "Compile the given file"
           <> metavar "FILE"
           <> long "compile"
           <> short 'c'
-      )
-
-linkArgs :: Parser Stage
-linkArgs =
-  Link
-    <$> many
-      ( strArgument $
-          help "Link the input files"
-            <> metavar "FILES..."
       )
 
 -- | Output file argument parser
 outputFile :: Parser (Maybe FilePath)
 outputFile =
   optional . strOption $
-    help "Output file"
+    help "Path to the output file"
       <> metavar "FILE"
       <> long "output"
       <> short 'o'

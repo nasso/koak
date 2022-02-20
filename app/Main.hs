@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Main where
+module Main (main) where
 
 import Args
 import Control.Monad.Except
@@ -44,7 +44,6 @@ app =
       Parse p -> parse p
       Check p -> check p
       Compile p -> compile p
-      Link ps -> link ps
 
 -- | Parse a program and write the AST to the output file
 parse :: FilePath -> App ()
@@ -63,11 +62,6 @@ compile p =
     out <- outputPath (p -<.> "o")
     cfg <- asks argCompilerConfig
     liftIO $ compileProgramToFile out cfg tast
-
--- | Link a set of compiled programs and write the resulting binary to the
--- output file
-link :: [FilePath] -> App ()
-link = error "unimplemented link"
 
 -- | Parse a file into an AST
 parsed :: FilePath -> App Program
