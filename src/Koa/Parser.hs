@@ -18,6 +18,7 @@ data ParserConfig = ParserConfig
   }
   deriving (Show, Eq)
 
+-- | Parse an expression from a string.
 parseExpr :: ParserConfig -> String -> Either String Expr
 parseExpr _ a =
   case runStringParser (optional whitespace *> expr <* eof) a of
