@@ -34,6 +34,7 @@ data ExprF e
   | EWhile e (BlockF e)
   | EFor e e e (BlockF e)
   | ECall Ident [e]
+  | EAssign Ident e
   | EBinop Binop e e
   | EUnop Unop e
   | ELit Literal
@@ -93,7 +94,6 @@ data Binop
   | OGreaterThan
   | OLessThanEq
   | OGreaterThanEq
-  | OAssign
   deriving (Eq, Show)
 
 -- | An unary operator (@-@, @!@, etc...).
