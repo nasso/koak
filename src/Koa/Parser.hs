@@ -3,7 +3,7 @@
 module Koa.Parser
   ( ParserConfig (..),
     parseProgram,
-    parseExpr
+    parseExpr,
   )
 where
 
