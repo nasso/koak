@@ -74,65 +74,65 @@ parserTests =
               ]
           ),
       testCase "simple addition expression" $
-        assertExpr "1 + 2" $
+        assertExpr "a + b" $
           Expr $ EBinop
             OAdd
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple subtraction expression" $
-        assertExpr "1 - 2" $
+        assertExpr "a - b" $
           Expr $ EBinop
             OSub
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple multiplication expression" $
-        assertExpr "1 * 2" $
+        assertExpr "a * b" $
           Expr $ EBinop
             OMul
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple division expression" $
-        assertExpr "1 / 2" $
+        assertExpr "a / b" $
           Expr $ EBinop
             ODiv
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple not equal expression" $
-        assertExpr "1 != 2" $
+        assertExpr "a != b" $
           Expr $ EBinop
             ONotEquals
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple equal expression" $
-        assertExpr "1 == 2" $
+        assertExpr "a == b" $
           Expr $ EBinop
             OEquals
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple greater than expression" $
-        assertExpr "1 > 2" $
+        assertExpr "a > b" $
           Expr $ EBinop
             OGreaterThan
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple greater than or equal expression" $
-        assertExpr "1 >= 2" $
+        assertExpr "a >= b" $
           Expr $ EBinop
             OGreaterThanEq
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple less than expression" $
-        assertExpr "1 < 2" $
+        assertExpr "a < b" $
           Expr $ EBinop
             OLessThan
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2),
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b"),
       testCase "simple less than or equal expression" $
-        assertExpr "1 <= 2" $
+        assertExpr "a <= b" $
           Expr $ EBinop
             OLessThanEq
-            (Expr $ ELit $ LInt 1)
-            (Expr $ ELit $ LInt 2)
+            (Expr $ EIdent $ Ident "a")
+            (Expr $ EIdent $ Ident "b")
   ]
 
 assertProgram :: String -> Program -> Assertion
