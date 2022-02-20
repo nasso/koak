@@ -131,7 +131,7 @@ invalidPrograms =
   ]
 
 defaultConfig :: AnalyserConfig
-defaultConfig = AnalyserConfig {treatWarningsAsErrors = False}
+defaultConfig = AnalyserConfig {cfgTreatWarningsAsErrors = False}
 
 assertValidProgram :: Program -> ProgramT -> Assertion
 assertValidProgram ast checked =
