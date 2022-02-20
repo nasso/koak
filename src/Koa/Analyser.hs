@@ -35,6 +35,7 @@ data AnalyserWarningType
 data AnalyserErrorType
   = EUndefinedSymbol Ident
   | ETypeMismatch {eExpected :: Type, eActual :: Type}
+  | EIncompatibleTypes {eLeft :: Type, eRight :: Type}
   | EWarn AnalyserWarningType
   | ENotAFunction Ident
   | ENotEnoughArguments Expr

@@ -97,6 +97,31 @@ validPrograms =
             [ DFn (Ident "foo") [] TInt32 $
                 BExpr [] $ ExprT (ECall (Ident "foo") [], TInt32)
             ]
+        ),
+    testCase "can add i32 and i32" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $
+                  Expr
+                    ( EBinop
+                        OAdd
+                        (Expr $ ELit $ LInt 1)
+                        (Expr $ ELit $ LInt 2)
+                    )
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $
+                  ExprT
+                    ( EBinop
+                        OAdd
+                        (ExprT (ELit $ LInt 1, TInt32))
+                        (ExprT (ELit $ LInt 2, TInt32)),
+                      TInt32
+                    )
+            ]
         )
   ]
 
@@ -127,7 +152,21 @@ invalidPrograms =
                 BExpr [] $ Expr (ECall (Ident "foo") [])
             ]
         )
-        (ETypeMismatch TEmpty TInt32)
+        (ETypeMismatch TEmpty TInt32),
+    testCase "can't add together i32 and f64" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $
+                  Expr
+                    ( EBinop
+                        OAdd
+                        (Expr $ ELit $ LInt 1)
+                        (Expr $ ELit $ LFloat 2.0)
+                    )
+            ]
+        )
+        (EIncompatibleTypes TInt32 TFloat64)
   ]
 
 defaultConfig :: AnalyserConfig
