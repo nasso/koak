@@ -40,10 +40,12 @@ packages:
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
 extra-deps:
-  - text-2.0
-  - comparse-0.2.0.0
-  - hashable-1.4.0.2
-
+  - comparse-0.2.0.0 # my own parsing library
+  - text-2.0 # needed by comparse
+  - hashable-1.4.0.2 # version with text-2.0 support
+  - attoparsec-0.14.4 # needed by llvm-hs-pure
+  - Cabal-3.6.2.0 # needed by llvm-hs
+  - parsec-3.1.15.0 # needed by Cabal
 # Override default flag values for local packages and extra-deps
 # flags: {}
 
