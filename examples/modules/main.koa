@@ -1,0 +1,7 @@
+import add ~ sum from "./add"
+
+fn main() {
+  let result = sum(a, b);
+
+  print(result);
+}

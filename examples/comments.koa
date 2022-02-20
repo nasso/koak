@@ -1,18 +1,3 @@
-import args from "process"
-import add ~ sum from "./add"
-
-fn main() {
-  let a = args.get(1);
-  let b = args.get(2);
-
-  let a = i32.parse(a);
-  let b = i32.parse(b);
-
-  let result = sum(a, b);
-
-  print(result);
-}
-
 //              .------.
 //            /  ~ ~   \,------.      ______
 //          ,'  ~ ~ ~  /  (@)   \   ,'      \
@@ -33,3 +18,5 @@ fn main() {
 //                         KOA         / /  / \  \
 //                                     `.     |   \
 //                                       `--------'
+
+fn main() { }

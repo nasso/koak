@@ -1,0 +1,11 @@
+import args from "process"
+
+fn main() {
+  let a = args.get(1);
+  let b = args.get(2);
+
+  let a = i32.parse(a);
+  let b = i32.parse(b);
+
+  print(a + b);
+}
