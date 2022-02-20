@@ -103,5 +103,6 @@ data Unop = ONot | ONeg deriving (Eq, Show)
 data Type
   = TInt32
   | TFloat64
+  | TBool
   | TEmpty
   deriving (Eq, Show)
