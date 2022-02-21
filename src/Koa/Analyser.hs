@@ -157,6 +157,20 @@ expression e@(Expr (EBinop op lhs rhs)) =
     case binopOutput op lhsTy rhsTy of
       Nothing -> throwError (EInvalidBinop op lhsTy rhsTy, LExpr e)
       Just outputTy -> pure $ ExprT (EBinop op lhs' rhs', outputTy)
+expression e@(Expr (EIf cond then' else')) =
+  do
+    cond'@(ExprT (_, condTy)) <- expression cond
+    when (condTy /= TBool) $ throwError (ETypeMismatch TBool condTy, LExpr cond)
+    then''@(ExprT (_, thenTy)) <- expression then'
+    else''@(ExprT (_, elseTy)) <- expression else'
+    when (thenTy /= elseTy) $ throwError (ETypeMismatch thenTy elseTy, LExpr e)
+    pure $ ExprT (EIf cond' then'' else'', thenTy)
+expression (Expr (EWhile cond body)) =
+  do
+    cond'@(ExprT (_, condTy)) <- expression cond
+    when (condTy /= TBool) $ throwError (ETypeMismatch TBool condTy, LExpr cond)
+    body' <- block body
+    pure $ ExprT (EWhile cond' body', blockType body')
 expression _ = error "not implemented: expression"
 
 -- | Look up a function in the analyser context.
