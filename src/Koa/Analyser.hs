@@ -140,7 +140,8 @@ block (BExpr stmts expr) =
 
 -- | Analyse a statement.
 statement :: Stmt -> Analyser StmtT
-statement = error "not implemented: statement"
+statement (SExpr expr) = SExpr <$> expression expr
+statement _ = error "not implemented: statement"
 
 -- | Analyse an expression.
 expression :: Expr -> Analyser ExprT

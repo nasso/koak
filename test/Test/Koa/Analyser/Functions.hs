@@ -98,6 +98,28 @@ validPrograms =
             [ DFn (Ident "foo") [] TInt32 $
                 BExpr [] $ ExprT (ECall (Ident "foo") [], TInt32)
             ]
+        ),
+    testCase "call statement" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "bar") [] TEmpty $
+                BExpr
+                  [ SExpr $ Expr (ECall (Ident "foo") [])
+                  ]
+                  $ Expr (ELit LEmpty),
+              DFn (Ident "foo") [] TInt32 $
+                BExpr [] $ Expr (ELit $ LInt 0)
+            ]
+        )
+        ( Program
+            [ DFn (Ident "bar") [] TEmpty $
+                BExpr
+                  [ SExpr $ ExprT (ECall (Ident "foo") [], TInt32)
+                  ]
+                  $ ExprT (ELit LEmpty, TEmpty),
+              DFn (Ident "foo") [] TInt32 $
+                BExpr [] $ ExprT (ELit $ LInt 0, TInt32)
+            ]
         )
   ]
 
