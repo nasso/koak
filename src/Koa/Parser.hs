@@ -11,6 +11,7 @@ import Control.Monad
 import Control.Monad.Parser
 import Data.Char
 import Koa.Syntax
+import Debug.Trace (trace)
 
 -- | Parser configuration.
 data ParserConfig = ParserConfig
@@ -55,8 +56,32 @@ type' =
 block :: CharParser p => p Block
 block = BExpr [] <$> braces (expr <|> pure (Expr $ ELit LEmpty))
 
+term :: CharParser p => p Expr
+term =
+  (Expr . ELit <$> literal)
+    <|> (Expr . EIdent <$> ident)
+
 expr :: CharParser p => p Expr
-expr = Expr . ELit <$> literal
+expr = chainl1 term binopExpr <|> term
+
+binopExpr :: CharParser p => p (Expr -> Expr -> Expr)
+binopExpr =
+  do
+    op <- binop
+    return $ \l r -> Expr $ EBinop op l r
+
+binop :: CharParser p => p Binop
+binop =
+  OEquals <$ symbol "=="
+    <|> ONotEquals <$ symbol "!="
+    <|> OGreaterThan <$ symbol ">"
+    <|> OGreaterThanEq <$ symbol ">="
+    <|> OLessThan <$ symbol "<"
+    <|> OLessThanEq <$ symbol "<="
+    <|> OAdd <$ symbol "+"
+    <|> OSub <$ symbol "-"
+    <|> OMul <$ symbol "*"
+    <|> ODiv <$ symbol "/"
 
 literal :: CharParser p => p Literal
 literal =
