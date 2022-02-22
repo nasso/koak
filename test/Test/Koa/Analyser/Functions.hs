@@ -19,54 +19,54 @@ validPrograms =
       assertValidProgram
         ( Program
             [ DFn (Ident "main") [] TEmpty $
-                BExpr [] $ Expr (ELit LEmpty)
+                BExpr [] litEmpty
             ]
         )
         ( Program
             [ DFn (Ident "main") [] TEmpty $
-                BExpr [] $ ExprT (ELit LEmpty, TEmpty)
+                BExpr [] litEmpty
             ]
         ),
     testCase "main returning zero" $
       assertValidProgram
         ( Program
             [ DFn (Ident "main") [] TInt32 $
-                BExpr [] $ Expr (ELit $ LInt 0)
+                BExpr [] $ litI32 0
             ]
         )
         ( Program
             [ DFn (Ident "main") [] TInt32 $
-                BExpr [] $ ExprT (ELit $ LInt 0, TInt32)
+                BExpr [] $ litI32 0
             ]
         ),
     testCase "many functions" $
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ Expr (ELit $ LInt 0),
+                BExpr [] $ litI32 0,
               DFn (Ident "bar") [] TEmpty $
-                BExpr [] $ Expr (ELit LEmpty)
+                BExpr [] litEmpty
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ ExprT (ELit $ LInt 0, TInt32),
+                BExpr [] $ litI32 0,
               DFn (Ident "bar") [] TEmpty $
-                BExpr [] $ ExprT (ELit LEmpty, TEmpty)
+                BExpr [] litEmpty
             ]
         ),
     testCase "call function defined before caller" $
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ Expr (ELit $ LInt 0),
+                BExpr [] $ litI32 0,
               DFn (Ident "bar") [] TInt32 $
                 BExpr [] $ Expr (ECall (Ident "foo") [])
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ ExprT (ELit $ LInt 0, TInt32),
+                BExpr [] $ litI32 0,
               DFn (Ident "bar") [] TInt32 $
                 BExpr [] $ ExprT (ECall (Ident "foo") [], TInt32)
             ]
@@ -77,14 +77,14 @@ validPrograms =
             [ DFn (Ident "bar") [] TInt32 $
                 BExpr [] $ Expr (ECall (Ident "foo") []),
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ Expr (ELit $ LInt 0)
+                BExpr [] $ litI32 0
             ]
         )
         ( Program
             [ DFn (Ident "bar") [] TInt32 $
                 BExpr [] $ ExprT (ECall (Ident "foo") [], TInt32),
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ ExprT (ELit $ LInt 0, TInt32)
+                BExpr [] $ litI32 0
             ]
         ),
     testCase "self-calling function" $
@@ -104,21 +104,19 @@ validPrograms =
         ( Program
             [ DFn (Ident "bar") [] TEmpty $
                 BExpr
-                  [ SExpr $ Expr (ECall (Ident "foo") [])
-                  ]
-                  $ Expr (ELit LEmpty),
+                  [SExpr $ Expr (ECall (Ident "foo") [])]
+                  litEmpty,
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ Expr (ELit $ LInt 0)
+                BExpr [] $ litI32 0
             ]
         )
         ( Program
             [ DFn (Ident "bar") [] TEmpty $
                 BExpr
-                  [ SExpr $ ExprT (ECall (Ident "foo") [], TInt32)
-                  ]
-                  $ ExprT (ELit LEmpty, TEmpty),
+                  [SExpr $ ExprT (ECall (Ident "foo") [], TInt32)]
+                  litEmpty,
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ ExprT (ELit $ LInt 0, TInt32)
+                BExpr [] $ litI32 0
             ]
         )
   ]
@@ -129,7 +127,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "main") [] TEmpty $
-                BExpr [] $ Expr (ELit $ LInt 0)
+                BExpr [] $ litI32 0
             ]
         )
         (ETypeMismatch TEmpty TInt32),
@@ -145,7 +143,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ Expr (ELit $ LInt 0),
+                BExpr [] $ litI32 0,
               DFn (Ident "bar") [] TEmpty $
                 BExpr [] $ Expr (ECall (Ident "foo") [])
             ]
