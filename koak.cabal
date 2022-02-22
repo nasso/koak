@@ -74,6 +74,10 @@ test-suite koak-test
   main-is: Spec.hs
   other-modules:
       Test.Koa.Analyser
+      Test.Koa.Analyser.ControlFlow
+      Test.Koa.Analyser.Functions
+      Test.Koa.Analyser.Operators
+      Test.Koa.Analyser.Util
       Test.Koa.Compiler
       Test.Koa.Parser
       Paths_koak
