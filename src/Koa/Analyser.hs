@@ -18,6 +18,7 @@ import Control.Monad.Trans.Writer.Strict
 import Control.Monad.Writer.Strict
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe
 import Koa.Syntax
 
 -- | Configuration for the analyser.
@@ -40,7 +41,7 @@ data AnalyserErrorType
   | EWarn AnalyserWarningType
   | ENotAFunction Ident
   | ENotAVariable Ident
-  | ENotEnoughArguments Expr
+  | EInvalidArguments
   | EUnimplemented
   deriving (Show, Eq)
 
@@ -122,7 +123,18 @@ withDef (DFn (Ident name) args rety _) = local insertDef
 -- | Analyse a definition.
 definition :: Definition -> Analyser DefinitionT
 definition (DFn name args rety body) =
-  DFn name args rety <$> checkBlock rety body
+  DFn name args rety <$> withBindings args (checkBlock rety body)
+
+-- | Run a computation with a set of bindings.
+withBindings :: [TBinding] -> Analyser a -> Analyser a
+withBindings bindings =
+  local insertBindings
+  where
+    insertBindings e = e {envCtx = HM.union newBindings $ envCtx e}
+    newBindings = HM.fromList . catMaybes $ binding <$> bindings
+    binding (TBinding (PIdent (Ident n)) ty) = Just (n, STVar Immutable ty)
+    binding (TBinding (PMutIdent (Ident n)) ty) = Just (n, STVar Mutable ty)
+    binding (TBinding PWildcard _) = Nothing
 
 -- | Analyse a block, verifying that it evaluates to the expected type.
 checkBlock :: Type -> Block -> Analyser BlockT
@@ -172,11 +184,13 @@ bind PWildcard _ env = env
 -- | Analyse an expression.
 expression :: Expr -> Analyser ExprT
 expression (Expr (ELit lit)) = pure $ ExprT (ELit lit, litType lit)
-expression e@(Expr (ECall fn [])) =
+expression e@(Expr (ECall fn args)) =
   do
-    (rety, argtys) <- lookupFunction fn
-    when (argtys /= []) $ throwError (ENotEnoughArguments e, LIdent fn)
-    pure $ ExprT (ECall fn [], rety)
+    args' <- traverse expression args
+    let argsTy = (\(ExprT (_, ty)) -> ty) <$> args'
+    (paramTys, rety) <- lookupFunction fn
+    when (paramTys /= argsTy) $ throwError (EInvalidArguments, LExpr e)
+    pure $ ExprT (ECall fn args', rety)
 expression e@(Expr (EBinop op lhs rhs)) =
   do
     lhs'@(ExprT (_, lhsTy)) <- expression lhs
@@ -184,6 +198,7 @@ expression e@(Expr (EBinop op lhs rhs)) =
     case binopOutput op lhsTy rhsTy of
       Nothing -> throwError (EInvalidBinop op lhsTy rhsTy, LExpr e)
       Just outputTy -> pure $ ExprT (EBinop op lhs' rhs', outputTy)
+expression (Expr (EUnop _ _)) = error "not implemented: expression EUnop"
 expression e@(Expr (EIf cond then' else')) =
   do
     cond'@(ExprT (_, condTy)) <- expression cond
@@ -215,15 +230,15 @@ expression (Expr (EBlock b)) =
   do
     b' <- block b
     pure $ ExprT (EBlock b', blockType b')
-expression _ = error "not implemented: expression"
+expression (Expr EFor {}) = error "not implemented: expression EFor"
 
 -- | Look up a function in the analyser context.
-lookupFunction :: Ident -> Analyser (Type, [Type])
+lookupFunction :: Ident -> Analyser ([Type], Type)
 lookupFunction ident@(Ident name) =
   do
     ctx <- asks envCtx
     case HM.lookup name ctx of
-      Just (STFun args rety) -> pure (rety, args)
+      Just (STFun args rety) -> pure (args, rety)
       Just _ -> throwError (ENotAFunction ident, LIdent ident)
       Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
 
