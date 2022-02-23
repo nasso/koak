@@ -22,8 +22,8 @@ validPrograms =
                   Expr
                     ( EIf
                         (litBool True)
-                        (litI32 0)
-                        (litI32 1)
+                        (BExpr [] $ litI32 0)
+                        (BExpr [] $ litI32 1)
                     )
             ]
         )
@@ -33,8 +33,8 @@ validPrograms =
                   ExprT
                     ( EIf
                         (litBool True)
-                        (litI32 0)
-                        (litI32 1),
+                        (BExpr [] $ litI32 0)
+                        (BExpr [] $ litI32 1),
                       TInt32
                     )
             ]
@@ -70,7 +70,12 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
-                BExpr [] $ Expr $ EIf litEmpty litEmpty litEmpty
+                BExpr [] $
+                  Expr $
+                    EIf
+                      litEmpty
+                      (BExpr [] litEmpty)
+                      (BExpr [] litEmpty)
             ]
         )
         (ETypeMismatch TBool TEmpty),
@@ -78,7 +83,12 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
-                BExpr [] $ Expr $ EIf (litBool True) (litI32 0) litEmpty
+                BExpr [] $
+                  Expr $
+                    EIf
+                      (litBool True)
+                      (BExpr [] $ litI32 0)
+                      (BExpr [] litEmpty)
             ]
         )
         (ETypeMismatch TInt32 TEmpty),

@@ -203,8 +203,9 @@ expression e@(Expr (EIf cond then' else')) =
   do
     cond'@(ExprT (_, condTy)) <- expression cond
     when (condTy /= TBool) $ throwError (ETypeMismatch TBool condTy, LExpr cond)
-    then''@(ExprT (_, thenTy)) <- expression then'
-    else''@(ExprT (_, elseTy)) <- expression else'
+    then'' <- block then'
+    else'' <- block else'
+    let (thenTy, elseTy) = (blockType then'', blockType else'')
     when (thenTy /= elseTy) $ throwError (ETypeMismatch thenTy elseTy, LExpr e)
     pure $ ExprT (EIf cond' then'' else'', thenTy)
 expression (Expr (EWhile cond body)) =
