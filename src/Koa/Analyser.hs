@@ -39,6 +39,7 @@ data AnalyserErrorType
   | EMutationOfImmutable Ident
   | EWarn AnalyserWarningType
   | ENotAFunction Ident
+  | ENotAVariable Ident
   | ENotEnoughArguments Expr
   | EUnimplemented
   deriving (Show, Eq)
@@ -196,6 +197,10 @@ expression (Expr (EWhile cond body)) =
     when (condTy /= TBool) $ throwError (ETypeMismatch TBool condTy, LExpr cond)
     body' <- block body
     pure $ ExprT (EWhile cond' body', blockType body')
+expression (Expr (EIdent varname)) =
+  do
+    ty <- lookupVar varname
+    pure $ ExprT (EIdent varname, ty)
 expression _ = error "not implemented: expression"
 
 -- | Look up a function in the analyser context.
@@ -206,6 +211,17 @@ lookupFunction ident@(Ident name) =
     case HM.lookup name ctx of
       Just (STFun args rety) -> pure (rety, args)
       Just _ -> throwError (ENotAFunction ident, LIdent ident)
+      Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
+
+-- | Look up a variable in the analyser context.
+lookupVar :: Ident -> Analyser Type
+lookupVar ident@(Ident name) =
+  do
+    ctx <- asks envCtx
+    case HM.lookup name ctx of
+      Just (STImmutableVar ty) -> pure ty
+      Just (STMutableVar ty) -> pure ty
+      Just _ -> throwError (ENotAVariable ident, LIdent ident)
       Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
 
 -- | Get the type of a block.

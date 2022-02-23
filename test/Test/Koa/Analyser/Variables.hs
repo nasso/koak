@@ -123,7 +123,7 @@ validPrograms =
         ( Program
             [ DFn (Ident "main") [] TInt32 $
                 BExpr
-                  [ SLet (PIdent $ Ident "foo") Nothing (litI32 4)
+                  [ SLet (PIdent $ Ident "foo") (Just TInt32) (litI32 4)
                   ]
                   $ ExprT (EIdent $ Ident "foo", TInt32)
             ]
@@ -131,7 +131,7 @@ validPrograms =
     testCase "copy variable into another" $
       assertValidProgram
         ( Program
-            [ DFn (Ident "main") [] TEmpty $
+            [ DFn (Ident "main") [] TInt32 $
                 BExpr
                   [ SLet (PIdent $ Ident "foo") Nothing (litI32 4),
                     SLet
@@ -145,10 +145,10 @@ validPrograms =
         ( Program
             [ DFn (Ident "main") [] TInt32 $
                 BExpr
-                  [ SLet (PIdent $ Ident "foo") Nothing (litI32 4),
+                  [ SLet (PIdent $ Ident "foo") (Just TInt32) (litI32 4),
                     SLet
                       (PIdent $ Ident "bar")
-                      Nothing
+                      (Just TInt32)
                       (ExprT (EIdent $ Ident "foo", TInt32))
                   ]
                   $ ExprT (EIdent $ Ident "bar", TInt32)
@@ -168,10 +168,10 @@ validPrograms =
         ( Program
             [ DFn (Ident "main") [] TInt32 $
                 BExpr
-                  [ SLet (PIdent $ Ident "foo") Nothing (litI32 4),
+                  [ SLet (PIdent $ Ident "foo") (Just TInt32) (litI32 4),
                     SLet
                       (PIdent $ Ident "bar")
-                      Nothing
+                      (Just TInt32)
                       (ExprT (EIdent $ Ident "foo", TInt32))
                   ]
                   $ ExprT (EIdent $ Ident "bar", TInt32)
@@ -205,7 +205,7 @@ validPrograms =
                             BExpr
                               [ SLet
                                   (PIdent $ Ident "bar")
-                                  Nothing
+                                  (Just TInt32)
                                   (ExprT (EIdent $ Ident "foo", TInt32))
                               ]
                               litEmpty,
@@ -266,7 +266,7 @@ invalidPrograms =
             ]
         )
         (ETypeMismatch TEmpty TInt32),
-    testCase "assign unknown variable" $
+    testCase "assign to undefined variable" $
       assertInvalidProgram
         ( Program
             [ DFn (Ident "main") [] TEmpty $
