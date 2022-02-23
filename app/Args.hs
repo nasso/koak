@@ -142,4 +142,14 @@ analyserCfg = pure $ AnalyserConfig False
 
 -- | Compiler configuration parser
 compilerCfg :: Parser CompilerConfig
-compilerCfg = pure $ CompilerConfig NativeObject
+compilerCfg = CompilerConfig <$> outputFormatCfg
+
+-- | Output format configuration parser
+outputFormatCfg :: Parser OutputFormat
+outputFormatCfg =
+  flag'
+    Assembly
+    ( help "Compile only; do not assemble or link."
+        <> short 'S'
+    )
+    <|> pure NativeObject
