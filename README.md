@@ -4,10 +4,10 @@
 
 ## Building
 
-Make sure you have the development packages for LLVM 9 installed (e.g. `llvm-9-dev` on Debian/Ubuntu or `llvm9.0-devel` on Fedora).
-`llvm-config --version` should display `9.0.1`.
-For more help on setting up LLVM, see
-[this page](https://github.com/nasso/koak/wiki/LLVM-setup-guide).
+Make sure you have the development packages for LLVM 9 installed (e.g.
+`llvm-9-dev` on Debian/Ubuntu or `llvm9.0-devel` on Fedora).
+`llvm-config --version` should display `9.0.1`. For more help on setting up
+LLVM, see [this page](https://github.com/nasso/koak/wiki/LLVM-setup-guide).
 
 Build the project with `stack`:
 
