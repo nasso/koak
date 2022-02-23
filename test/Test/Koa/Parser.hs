@@ -152,7 +152,163 @@ parserTests =
           EBinop
             OLessThanEq
             (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b")
+            (Expr $ EIdent $ Ident "b"),
+    testCase "simple multiple add expression" $
+      assertExpr "a + b + c" $
+        Expr $
+          EBinop
+            OAdd
+            ( Expr $
+                EBinop
+                  OAdd
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "simple multiple sub expressions" $
+      assertExpr "a - b - c" $
+        Expr $
+          EBinop
+            OSub
+            ( Expr $
+                EBinop
+                  OSub
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "simple priority mul then add expressions" $
+      assertExpr "a * b + c" $
+        Expr $
+          EBinop
+            OAdd
+            ( Expr $
+                EBinop
+                  OMul
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "simple priority add then mul expressions" $
+      assertExpr "a + b * c" $
+        Expr $
+          EBinop
+            OAdd
+            (Expr $ EIdent $ Ident "a")
+            ( Expr $
+                EBinop
+                  OMul
+                  (Expr $ EIdent $ Ident "b")
+                  (Expr $ EIdent $ Ident "c")
+            ),
+    testCase "simple priority add then div expressions" $
+      assertExpr "a + b / c" $
+        Expr $
+          EBinop
+            OAdd
+            (Expr $ EIdent $ Ident "a")
+            ( Expr $
+                EBinop
+                  ODiv
+                  (Expr $ EIdent $ Ident "b")
+                  (Expr $ EIdent $ Ident "c")
+            ),
+    testCase "simple priority add then sub expressions" $
+      assertExpr "a + b - c" $
+        Expr $
+          EBinop
+            OSub
+            ( Expr $
+                EBinop
+                  OAdd
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "simple priority sub then add expressions" $
+      assertExpr "a - b + c" $
+        Expr $
+          EBinop
+            OAdd
+            ( Expr $
+                EBinop
+                  OSub
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "simple priority sub then mul expressions" $
+      assertExpr "a - b * c" $
+        Expr $
+          EBinop
+            OSub
+            (Expr $ EIdent $ Ident "a")
+            ( Expr $
+                EBinop
+                  OMul
+                  (Expr $ EIdent $ Ident "b")
+                  (Expr $ EIdent $ Ident "c")
+            ),
+    testCase "simple priority mul then sub expressions" $
+      assertExpr "a * b - c" $
+        Expr $
+          EBinop
+            OSub
+            ( Expr $
+                EBinop
+                  OMul
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "simple priority mul then div expressions" $
+      assertExpr "a * b / c" $
+        Expr $
+          EBinop
+            ODiv
+            ( Expr $
+                EBinop
+                  OMul
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "simple priority div then mul expressions" $
+      assertExpr "a / b * c" $
+        Expr $
+          EBinop
+            OMul
+            ( Expr $
+                EBinop
+                  ODiv
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "multiple div expressions" $
+      assertExpr "a / b / c" $
+        Expr $
+          EBinop
+            ODiv
+            ( Expr $
+                EBinop
+                  ODiv
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
+    testCase "multiple mul expressions" $
+      assertExpr "a * b * c" $
+        Expr $
+          EBinop
+            OMul
+            ( Expr $
+                EBinop
+                  OMul
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c")
   ]
 
 assertProgram :: String -> Program -> Assertion

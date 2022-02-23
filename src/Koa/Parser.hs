@@ -55,19 +55,33 @@ type' =
 block :: CharParser p => p Block
 block = BExpr [] <$> braces (expr <|> pure (Expr $ ELit LEmpty))
 
+prio :: CharParser p => p Expr
+prio = chainl1 term binopExprPrio
+
 term :: CharParser p => p Expr
 term =
   (Expr . ELit <$> literal)
     <|> (Expr . EIdent <$> ident)
 
 expr :: CharParser p => p Expr
-expr = chainl1 term binopExpr <|> term
+expr = chainl1 prio binopExpr <|> term
 
 binopExpr :: CharParser p => p (Expr -> Expr -> Expr)
 binopExpr =
   do
     op <- binop
     pure $ \l r -> Expr $ EBinop op l r
+
+binopExprPrio :: CharParser p => p (Expr -> Expr -> Expr)
+binopExprPrio =
+  do
+    op <- binopPrio
+    pure $ \l r -> Expr $ EBinop op l r
+
+binopPrio :: CharParser p => p Binop
+binopPrio =
+  OMul <$ symbol "*"
+    <|> ODiv <$ symbol "/"
 
 -- | Parser for binary operators.
 binop :: CharParser p => p Binop
@@ -80,8 +94,6 @@ binop =
     <|> OLessThan <$ symbol "<"
     <|> OAdd <$ symbol "+"
     <|> OSub <$ symbol "-"
-    <|> OMul <$ symbol "*"
-    <|> ODiv <$ symbol "/"
 
 literal :: CharParser p => p Literal
 literal =
