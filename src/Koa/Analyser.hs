@@ -62,15 +62,16 @@ type AnalyserError = (AnalyserErrorType, AnalyserLocation)
 type AnalyserResult =
   Either AnalyserError (ProgramT, [AnalyserWarning])
 
-data SymbolType
+data SymbolBinding
   = STFun [Type] Type
-  | STVar Type
+  | STImmutableVar Type
+  | STMutableVar Type
   deriving (Show, Eq)
 
 -- | The read-only environment in which the analyser runs.
 data AnalyserEnv = AnalyserEnv
   { envCfg :: AnalyserConfig,
-    envCtx :: HashMap String SymbolType
+    envCtx :: HashMap String SymbolBinding
   }
   deriving (Show, Eq)
 
@@ -136,13 +137,35 @@ checkBlock expectedTy b =
 
 -- | Analyse a block.
 block :: Block -> Analyser BlockT
-block (BExpr stmts expr) =
-  BExpr <$> traverse statement stmts <*> expression expr
+block (BExpr stmts e) =
+  withStatements stmts $ \stmts' -> BExpr stmts' <$> expression e
 
--- | Analyse a statement.
-statement :: Stmt -> Analyser StmtT
-statement (SExpr expr) = SExpr <$> expression expr
-statement _ = error "not implemented: statement"
+-- | Analyse a series of statements and run a computation in the modified scope.
+withStatements :: [Stmt] -> ([StmtT] -> Analyser a) -> Analyser a
+withStatements [] k = k []
+withStatements (s : ss) k =
+  withStatement s $
+    \s' -> withStatements ss $
+      \ss' -> k (s' : ss')
+
+-- | Analyse a statement and run a computation in the modified scope.
+withStatement :: Stmt -> (StmtT -> Analyser a) -> Analyser a
+withStatement (SExpr expr) k = expression expr >>= k . SExpr
+withStatement s@(SLet pat explicitTy e) k =
+  do
+    e'@(ExprT (_, exprTy)) <- expression e
+    case explicitTy of
+      Just ty | ty /= exprTy -> throwError (ETypeMismatch ty exprTy, LStmt s)
+      _ -> pure ()
+    local (bind pat e') $ k $ SLet pat (Just exprTy) e'
+withStatement _ _ = error "not implemented: withStatement"
+
+bind :: Pattern -> ExprT -> AnalyserEnv -> AnalyserEnv
+bind (PIdent (Ident varname)) (ExprT (_, ty)) env =
+  env {envCtx = HM.insert varname (STImmutableVar ty) $ envCtx env}
+bind (PMutIdent (Ident varname)) (ExprT (_, ty)) env =
+  env {envCtx = HM.insert varname (STMutableVar ty) $ envCtx env}
+bind PWildcard _ env = env
 
 -- | Analyse an expression.
 expression :: Expr -> Analyser ExprT
