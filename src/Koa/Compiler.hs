@@ -65,14 +65,16 @@ genExpr :: MonadIRBuilder m => ExprT -> m AST.Operand
 -- literal
 genExpr (ExprT (ELit lit, _)) = pure $ genLiteral lit
 -- unary op
-genExpr (ExprT (EUnop op e, _)) = do
-  e' <- genExpr e
-  genUnop op e'
+genExpr (ExprT (EUnop op e, _)) =
+  do
+    e' <- genExpr e
+    genUnop op e'
 -- binary op
-genExpr (ExprT (EBinop op left right, _)) = do
-  left' <- genExpr left
-  right' <- genExpr right
-  genBinop op left' right'
+genExpr (ExprT (EBinop op left right, _)) =
+  do
+    left' <- genExpr left
+    right' <- genExpr right
+    genBinop op left' right'
 -- other
 genExpr (ExprT (EIdent (Ident _), _)) = error "unimplemented genExpr.Ident"
 genExpr (ExprT (EBlock _, _)) = error "unimplemented genExpr.EBlock"
