@@ -7,7 +7,6 @@ module Koa.Compiler
   )
 where
 
-import Control.Exception
 import Data.Foldable
 import Koa.Syntax
 import qualified LLVM.AST as AST
@@ -18,7 +17,6 @@ import LLVM.IRBuilder
 import LLVM.Module
 import LLVM.Target
 import System.Directory
-import System.IO.Error
 
 -- | Configuration for the compiler.
 newtype CompilerConfig = CompilerConfig
@@ -36,19 +34,12 @@ compileProgramToFile path cfg ast =
     withModuleFromAST ctx (genModule ast) $ \modir ->
       emit (cfgFormat cfg) path modir
 
-deleteFileIfExist :: FilePath -> IO ()
-deleteFileIfExist path = removeFile path `catch` handleExists
-  where
-    handleExists e
-      | isDoesNotExistError e = return ()
-      | otherwise = throwIO e
-
 emit :: OutputFormat -> FilePath -> Module -> IO ()
 emit Assembly path modir =
-  deleteFileIfExist path
+  removePathForcibly path
     >> writeLLVMAssemblyToFile (File path) modir
 emit NativeObject path modir =
-  deleteFileIfExist path
+  removePathForcibly path
     >> withHostTargetMachineDefault
       ( \target ->
           writeObjectToFile target (File path) modir
