@@ -147,9 +147,9 @@ compilerCfg = CompilerConfig <$> outputFormatCfg
 -- | Output format configuration parser
 outputFormatCfg :: Parser OutputFormat
 outputFormatCfg =
-  flag'
+  flag
+    NativeObject
     Assembly
     ( help "Compile only; do not assemble or link."
         <> short 'S'
     )
-    <|> pure NativeObject
