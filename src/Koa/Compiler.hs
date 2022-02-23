@@ -48,19 +48,22 @@ genDef (DFn (Ident name) args rety body) =
     arg = error "unimplemented genDef.arg"
 
 genBody :: MonadIRBuilder m => BlockT -> [AST.Operand] -> m ()
-genBody (BExpr [] (ExprT (ELit LEmpty, TEmpty))) [] =
+genBody (BExpr [] (ExprT (_, TEmpty))) [] =
   do
     _ <- block `named` "entry"
     retVoid
-genBody (BExpr [] (ExprT (ELit (LInt n), TInt32))) [] =
+genBody (BExpr [] (ExprT (ELit literal, _))) [] =
   do
     _ <- block `named` "entry"
-    ret $ int32 n
-genBody (BExpr [] (ExprT (ELit (LFloat n), TFloat64))) [] =
-  do
-    _ <- block `named` "entry"
-    ret $ double n
+    ret $ genLiteral literal
 genBody _ _ = error "unimplemented genBody for statements"
+
+genLiteral :: Literal -> AST.Operand
+genLiteral (LInt n) = int32 n
+genLiteral (LFloat n) = double n
+genLiteral (LBool True) = bit 1
+genLiteral (LBool False) = bit 0
+genLiteral LEmpty = error "can't generate empty literal"
 
 llvmType :: Type -> LLVMType.Type
 llvmType TInt32 = LLVMType.i32
