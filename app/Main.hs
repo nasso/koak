@@ -59,8 +59,13 @@ compile :: FilePath -> App ()
 compile p =
   do
     tast <- checked p
-    out <- outputPath (p -<.> "o")
     cfg <- asks argCompilerConfig
+    out <-
+      outputPath
+        ( p -<.> case cfgFormat cfg of
+            Assembly -> "ll"
+            NativeObject -> "o"
+        )
     liftIO $ compileProgramToFile out cfg tast
 
 -- | Parse a file into an AST
