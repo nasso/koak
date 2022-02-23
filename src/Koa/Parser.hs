@@ -3,6 +3,7 @@
 module Koa.Parser
   ( ParserConfig (..),
     parseProgram,
+    parseExpr,
   )
 where
 
@@ -16,6 +17,13 @@ data ParserConfig = ParserConfig
   {
   }
   deriving (Show, Eq)
+
+-- | Parse an expression from a string.
+parseExpr :: ParserConfig -> String -> Either String Expr
+parseExpr _ a =
+  case runStringParser (optional whitespace *> expr <* eof) a of
+    Parsed v _ _ -> Right v
+    NoParse err -> Left $ show err
 
 -- | Parse a program from a string.
 parseProgram :: ParserConfig -> String -> Either String Program
@@ -47,8 +55,33 @@ type' =
 block :: CharParser p => p Block
 block = BExpr [] <$> braces (expr <|> pure (Expr $ ELit LEmpty))
 
+term :: CharParser p => p Expr
+term =
+  (Expr . ELit <$> literal)
+    <|> (Expr . EIdent <$> ident)
+
 expr :: CharParser p => p Expr
-expr = Expr . ELit <$> literal
+expr = chainl1 term binopExpr <|> term
+
+binopExpr :: CharParser p => p (Expr -> Expr -> Expr)
+binopExpr =
+  do
+    op <- binop
+    pure $ \l r -> Expr $ EBinop op l r
+
+-- | Parser for binary operators.
+binop :: CharParser p => p Binop
+binop =
+  OEquals <$ symbol "=="
+    <|> ONotEquals <$ symbol "!="
+    <|> OGreaterThanEq <$ symbol ">="
+    <|> OLessThanEq <$ symbol "<="
+    <|> OGreaterThan <$ symbol ">"
+    <|> OLessThan <$ symbol "<"
+    <|> OAdd <$ symbol "+"
+    <|> OSub <$ symbol "-"
+    <|> OMul <$ symbol "*"
+    <|> ODiv <$ symbol "/"
 
 literal :: CharParser p => p Literal
 literal =
