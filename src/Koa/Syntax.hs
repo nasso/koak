@@ -24,7 +24,7 @@ type Definition = DefinitionF Expr
 type DefinitionT = DefinitionF ExprT
 
 -- | An arbitrary identifier binding (e.g. a function parameter).
-data TBinding = TBinding Ident Type deriving (Eq, Show)
+data TBinding = TBinding Pattern Type deriving (Eq, Show)
 
 -- | AST for an expression.
 data ExprF e
