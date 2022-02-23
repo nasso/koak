@@ -30,7 +30,7 @@ data TBinding = TBinding Pattern Type deriving (Eq, Show)
 data ExprF e
   = EIdent Ident
   | EBlock (BlockF e)
-  | EIf e e e
+  | EIf e (BlockF e) (BlockF e)
   | EWhile e (BlockF e)
   | EFor e e e (BlockF e)
   | ECall Ident [e]
