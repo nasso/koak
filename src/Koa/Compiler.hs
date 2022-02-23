@@ -10,6 +10,7 @@ where
 import Data.Foldable
 import Koa.Syntax
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.IntegerPredicate as IPred
 import qualified LLVM.AST.Type as LLVMType
 import LLVM.Context
 import LLVM.IRBuilder
@@ -90,7 +91,12 @@ genBinop OAdd = add
 genBinop OSub = sub
 genBinop OMul = mul
 genBinop ODiv = sdiv
-genBinop _ = error "unimplemented genBinop'"
+genBinop OEquals = icmp IPred.EQ
+genBinop ONotEquals = icmp IPred.NE
+genBinop OLessThan = icmp IPred.SLT
+genBinop OGreaterThan = icmp IPred.SGT
+genBinop OLessThanEq = icmp IPred.SLE
+genBinop OGreaterThanEq = icmp IPred.SGE
 
 genLiteral :: Literal -> AST.Operand
 genLiteral (LInt n) = int32 n
