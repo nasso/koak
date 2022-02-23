@@ -36,6 +36,7 @@ data AnalyserErrorType
   = EUndefinedSymbol Ident
   | ETypeMismatch {eExpected :: Type, eActual :: Type}
   | EInvalidBinop Binop Type Type
+  | EMutationOfImmutable Ident
   | EWarn AnalyserWarningType
   | ENotAFunction Ident
   | ENotEnoughArguments Expr
