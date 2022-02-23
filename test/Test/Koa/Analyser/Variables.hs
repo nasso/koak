@@ -166,15 +166,12 @@ validPrograms =
             ]
         )
         ( Program
-            [ DFn (Ident "main") [] TInt32 $
+            [ DFn (Ident "main") [] TEmpty $
                 BExpr
-                  [ SLet (PIdent $ Ident "foo") (Just TInt32) (litI32 4),
-                    SLet
-                      (PIdent $ Ident "bar")
-                      (Just TInt32)
-                      (ExprT (EIdent $ Ident "foo", TInt32))
+                  [ SLet (PMutIdent $ Ident "foo") (Just TInt32) (litI32 4),
+                    SExpr $ ExprT (EAssign (Ident "foo") $ litI32 5, TInt32)
                   ]
-                  $ ExprT (EIdent $ Ident "bar", TInt32)
+                  litEmpty
             ]
         ),
     testCase "refer to variable defined in parent scope" $

@@ -63,10 +63,11 @@ type AnalyserError = (AnalyserErrorType, AnalyserLocation)
 type AnalyserResult =
   Either AnalyserError (ProgramT, [AnalyserWarning])
 
+data Mutability = Mutable | Immutable deriving (Show, Eq)
+
 data SymbolBinding
   = STFun [Type] Type
-  | STImmutableVar Type
-  | STMutableVar Type
+  | STVar Mutability Type
   deriving (Show, Eq)
 
 -- | The read-only environment in which the analyser runs.
@@ -163,9 +164,9 @@ withStatement _ _ = error "not implemented: withStatement"
 
 bind :: Pattern -> ExprT -> AnalyserEnv -> AnalyserEnv
 bind (PIdent (Ident varname)) (ExprT (_, ty)) env =
-  env {envCtx = HM.insert varname (STImmutableVar ty) $ envCtx env}
+  env {envCtx = HM.insert varname (STVar Immutable ty) $ envCtx env}
 bind (PMutIdent (Ident varname)) (ExprT (_, ty)) env =
-  env {envCtx = HM.insert varname (STMutableVar ty) $ envCtx env}
+  env {envCtx = HM.insert varname (STVar Mutable ty) $ envCtx env}
 bind PWildcard _ env = env
 
 -- | Analyse an expression.
@@ -199,8 +200,17 @@ expression (Expr (EWhile cond body)) =
     pure $ ExprT (EWhile cond' body', blockType body')
 expression (Expr (EIdent varname)) =
   do
-    ty <- lookupVar varname
+    (_, ty) <- lookupVar varname
     pure $ ExprT (EIdent varname, ty)
+expression e@(Expr (EAssign varname val)) =
+  do
+    (mut, ty) <- lookupVar varname
+    when (mut == Immutable) $
+      throwError (EMutationOfImmutable varname, LExpr e)
+    val'@(ExprT (_, valTy)) <- expression val
+    when (ty /= valTy) $
+      throwError (ETypeMismatch ty valTy, LExpr e)
+    pure $ ExprT (EAssign varname val', ty)
 expression _ = error "not implemented: expression"
 
 -- | Look up a function in the analyser context.
@@ -214,13 +224,12 @@ lookupFunction ident@(Ident name) =
       Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
 
 -- | Look up a variable in the analyser context.
-lookupVar :: Ident -> Analyser Type
+lookupVar :: Ident -> Analyser (Mutability, Type)
 lookupVar ident@(Ident name) =
   do
     ctx <- asks envCtx
     case HM.lookup name ctx of
-      Just (STImmutableVar ty) -> pure ty
-      Just (STMutableVar ty) -> pure ty
+      Just (STVar mut ty) -> pure (mut, ty)
       Just _ -> throwError (ENotAVariable ident, LIdent ident)
       Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
 
