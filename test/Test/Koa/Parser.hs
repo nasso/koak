@@ -165,6 +165,18 @@ parserTests =
                   (Expr $ EIdent $ Ident "b")
             )
             (Expr $ EIdent $ Ident "c"),
+    testCase "simple multiple sub expressions" $
+      assertExpr "a - b - c" $
+        Expr $
+          EBinop
+            OSub
+            ( Expr $
+                EBinop
+                  OSub
+                  (Expr $ EIdent $ Ident "a")
+                  (Expr $ EIdent $ Ident "b")
+            )
+            (Expr $ EIdent $ Ident "c"),
     testCase "simple priority mul then add expressions" $
       assertExpr "a * b + c" $
         Expr $
