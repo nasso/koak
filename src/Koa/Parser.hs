@@ -11,7 +11,6 @@ import Control.Monad
 import Control.Monad.Parser
 import Data.Char
 import Koa.Syntax
-import Debug.Trace (trace)
 
 -- | Parser configuration.
 data ParserConfig = ParserConfig
@@ -68,16 +67,17 @@ binopExpr :: CharParser p => p (Expr -> Expr -> Expr)
 binopExpr =
   do
     op <- binop
-    return $ \l r -> Expr $ EBinop op l r
+    pure $ \l r -> Expr $ EBinop op l r
 
+-- | Parser for binary operators.
 binop :: CharParser p => p Binop
 binop =
   OEquals <$ symbol "=="
     <|> ONotEquals <$ symbol "!="
-    <|> OGreaterThan <$ symbol ">"
     <|> OGreaterThanEq <$ symbol ">="
-    <|> OLessThan <$ symbol "<"
     <|> OLessThanEq <$ symbol "<="
+    <|> OGreaterThan <$ symbol ">"
+    <|> OLessThan <$ symbol "<"
     <|> OAdd <$ symbol "+"
     <|> OSub <$ symbol "-"
     <|> OMul <$ symbol "*"
