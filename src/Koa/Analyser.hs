@@ -36,8 +36,10 @@ data AnalyserErrorType
   = EUndefinedSymbol Ident
   | ETypeMismatch {eExpected :: Type, eActual :: Type}
   | EInvalidBinop Binop Type Type
+  | EMutationOfImmutable Ident
   | EWarn AnalyserWarningType
   | ENotAFunction Ident
+  | ENotAVariable Ident
   | ENotEnoughArguments Expr
   | EUnimplemented
   deriving (Show, Eq)
@@ -61,15 +63,17 @@ type AnalyserError = (AnalyserErrorType, AnalyserLocation)
 type AnalyserResult =
   Either AnalyserError (ProgramT, [AnalyserWarning])
 
-data SymbolType
+data Mutability = Mutable | Immutable deriving (Show, Eq)
+
+data SymbolBinding
   = STFun [Type] Type
-  | STVar Type
+  | STVar Mutability Type
   deriving (Show, Eq)
 
 -- | The read-only environment in which the analyser runs.
 data AnalyserEnv = AnalyserEnv
   { envCfg :: AnalyserConfig,
-    envCtx :: HashMap String SymbolType
+    envCtx :: HashMap String SymbolBinding
   }
   deriving (Show, Eq)
 
@@ -135,12 +139,35 @@ checkBlock expectedTy b =
 
 -- | Analyse a block.
 block :: Block -> Analyser BlockT
-block (BExpr stmts expr) =
-  BExpr <$> traverse statement stmts <*> expression expr
+block (BExpr stmts e) =
+  withStatements stmts $ \stmts' -> BExpr stmts' <$> expression e
 
--- | Analyse a statement.
-statement :: Stmt -> Analyser StmtT
-statement = error "not implemented: statement"
+-- | Analyse a series of statements and run a computation in the modified scope.
+withStatements :: [Stmt] -> ([StmtT] -> Analyser a) -> Analyser a
+withStatements [] k = k []
+withStatements (s : ss) k =
+  withStatement s $
+    \s' -> withStatements ss $
+      \ss' -> k (s' : ss')
+
+-- | Analyse a statement and run a computation in the modified scope.
+withStatement :: Stmt -> (StmtT -> Analyser a) -> Analyser a
+withStatement (SExpr expr) k = expression expr >>= k . SExpr
+withStatement s@(SLet pat explicitTy e) k =
+  do
+    e'@(ExprT (_, exprTy)) <- expression e
+    case explicitTy of
+      Just ty | ty /= exprTy -> throwError (ETypeMismatch ty exprTy, LStmt s)
+      _ -> pure ()
+    local (bind pat e') $ k $ SLet pat (Just exprTy) e'
+withStatement _ _ = error "not implemented: withStatement"
+
+bind :: Pattern -> ExprT -> AnalyserEnv -> AnalyserEnv
+bind (PIdent (Ident varname)) (ExprT (_, ty)) env =
+  env {envCtx = HM.insert varname (STVar Immutable ty) $ envCtx env}
+bind (PMutIdent (Ident varname)) (ExprT (_, ty)) env =
+  env {envCtx = HM.insert varname (STVar Mutable ty) $ envCtx env}
+bind PWildcard _ env = env
 
 -- | Analyse an expression.
 expression :: Expr -> Analyser ExprT
@@ -171,6 +198,23 @@ expression (Expr (EWhile cond body)) =
     when (condTy /= TBool) $ throwError (ETypeMismatch TBool condTy, LExpr cond)
     body' <- block body
     pure $ ExprT (EWhile cond' body', blockType body')
+expression (Expr (EIdent varname)) =
+  do
+    (_, ty) <- lookupVar varname
+    pure $ ExprT (EIdent varname, ty)
+expression e@(Expr (EAssign varname val)) =
+  do
+    (mut, ty) <- lookupVar varname
+    when (mut == Immutable) $
+      throwError (EMutationOfImmutable varname, LExpr e)
+    val'@(ExprT (_, valTy)) <- expression val
+    when (ty /= valTy) $
+      throwError (ETypeMismatch ty valTy, LExpr e)
+    pure $ ExprT (EAssign varname val', ty)
+expression (Expr (EBlock b)) =
+  do
+    b' <- block b
+    pure $ ExprT (EBlock b', blockType b')
 expression _ = error "not implemented: expression"
 
 -- | Look up a function in the analyser context.
@@ -181,6 +225,16 @@ lookupFunction ident@(Ident name) =
     case HM.lookup name ctx of
       Just (STFun args rety) -> pure (rety, args)
       Just _ -> throwError (ENotAFunction ident, LIdent ident)
+      Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
+
+-- | Look up a variable in the analyser context.
+lookupVar :: Ident -> Analyser (Mutability, Type)
+lookupVar ident@(Ident name) =
+  do
+    ctx <- asks envCtx
+    case HM.lookup name ctx of
+      Just (STVar mut ty) -> pure (mut, ty)
+      Just _ -> throwError (ENotAVariable ident, LIdent ident)
       Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
 
 -- | Get the type of a block.

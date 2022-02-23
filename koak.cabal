@@ -78,6 +78,7 @@ test-suite koak-test
       Test.Koa.Analyser.Functions
       Test.Koa.Analyser.Operators
       Test.Koa.Analyser.Util
+      Test.Koa.Analyser.Variables
       Test.Koa.Compiler
       Test.Koa.Parser
       Paths_koak

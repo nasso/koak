@@ -18,50 +18,24 @@ validPrograms =
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $
-                  Expr
-                    ( EBinop
-                        OAdd
-                        (Expr $ ELit $ LInt 1)
-                        (Expr $ ELit $ LInt 2)
-                    )
+                BExpr [] $ Expr (EBinop OAdd (litI32 1) (litI32 2))
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $
-                  ExprT
-                    ( EBinop
-                        OAdd
-                        (ExprT (ELit $ LInt 1, TInt32))
-                        (ExprT (ELit $ LInt 2, TInt32)),
-                      TInt32
-                    )
+                BExpr [] $ ExprT (EBinop OAdd (litI32 1) (litI32 2), TInt32)
             ]
         ),
     testCase "i32 == i32 is a boolean" $
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TBool $
-                BExpr [] $
-                  Expr
-                    ( EBinop
-                        OEquals
-                        (Expr $ ELit $ LInt 1)
-                        (Expr $ ELit $ LInt 2)
-                    )
+                BExpr [] $ Expr (EBinop OEquals (litI32 1) (litI32 2))
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TBool $
-                BExpr [] $
-                  ExprT
-                    ( EBinop
-                        OEquals
-                        (ExprT (ELit $ LInt 1, TInt32))
-                        (ExprT (ELit $ LInt 2, TInt32)),
-                      TBool
-                    )
+                BExpr [] $ ExprT (EBinop OEquals (litI32 1) (litI32 2), TBool)
             ]
         )
   ]
@@ -72,13 +46,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $
-                  Expr
-                    ( EBinop
-                        OAdd
-                        (Expr $ ELit $ LInt 1)
-                        (Expr $ ELit $ LFloat 2.0)
-                    )
+                BExpr [] $ Expr (EBinop OAdd (litI32 1) (litF64 2.0))
             ]
         )
         (EInvalidBinop OAdd TInt32 TFloat64),
@@ -86,13 +54,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
-                BExpr [] $
-                  Expr
-                    ( EBinop
-                        OAdd
-                        (Expr $ ELit LEmpty)
-                        (Expr $ ELit LEmpty)
-                    )
+                BExpr [] $ Expr (EBinop OAdd litEmpty litEmpty)
             ]
         )
         (EInvalidBinop OAdd TEmpty TEmpty),
@@ -100,13 +62,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TBool $
-                BExpr [] $
-                  Expr
-                    ( EBinop
-                        OLessThan
-                        (Expr $ ELit LEmpty)
-                        (Expr $ ELit LEmpty)
-                    )
+                BExpr [] $ Expr (EBinop OLessThan litEmpty litEmpty)
             ]
         )
         (EInvalidBinop OLessThan TEmpty TEmpty),
@@ -114,13 +70,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TBool $
-                BExpr [] $
-                  Expr
-                    ( EBinop
-                        OLessThan
-                        (Expr $ ELit $ LBool True)
-                        (Expr $ ELit $ LBool False)
-                    )
+                BExpr [] $ Expr (EBinop OLessThan (litBool True) (litBool True))
             ]
         )
         (EInvalidBinop OLessThan TBool TBool)
