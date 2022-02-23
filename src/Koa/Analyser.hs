@@ -211,6 +211,10 @@ expression e@(Expr (EAssign varname val)) =
     when (ty /= valTy) $
       throwError (ETypeMismatch ty valTy, LExpr e)
     pure $ ExprT (EAssign varname val', ty)
+expression (Expr (EBlock b)) =
+  do
+    b' <- block b
+    pure $ ExprT (EBlock b', blockType b')
 expression _ = error "not implemented: expression"
 
 -- | Look up a function in the analyser context.

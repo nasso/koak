@@ -291,7 +291,7 @@ invalidPrograms =
         ( Program
             [ DFn (Ident "main") [] TEmpty $
                 BExpr
-                  [ SLet (PIdent $ Ident "foo") Nothing (litI32 4),
+                  [ SLet (PMutIdent $ Ident "foo") Nothing (litI32 4),
                     SExpr $ Expr $ EAssign (Ident "foo") $ litBool True
                   ]
                   litEmpty
