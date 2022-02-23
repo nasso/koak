@@ -16,6 +16,7 @@ import LLVM.Context
 import LLVM.IRBuilder
 import LLVM.Module
 import LLVM.Target
+import System.Directory
 
 -- | Configuration for the compiler.
 newtype CompilerConfig = CompilerConfig
@@ -34,10 +35,15 @@ compileProgramToFile path cfg ast =
       emit (cfgFormat cfg) path modir
 
 emit :: OutputFormat -> FilePath -> Module -> IO ()
-emit Assembly path modir = writeLLVMAssemblyToFile (File path) modir
+emit Assembly path modir =
+  removePathForcibly path
+    >> writeLLVMAssemblyToFile (File path) modir
 emit NativeObject path modir =
-  withHostTargetMachineDefault $ \target ->
-    writeObjectToFile target (File path) modir
+  removePathForcibly path
+    >> withHostTargetMachineDefault
+      ( \target ->
+          writeObjectToFile target (File path) modir
+      )
 
 genModule :: ProgramT -> AST.Module
 genModule (Program defs) = buildModule "__main_module" $ traverse_ genDef defs
