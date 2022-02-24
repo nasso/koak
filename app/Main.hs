@@ -15,6 +15,8 @@ import System.Exit
 import System.FilePath
 import System.IO
 
+-- import System.IO.Temp
+
 newtype App a = App {runApp :: ReaderT Args (ExceptT () IO) a}
   deriving
     ( Functor,
@@ -44,6 +46,8 @@ app =
       Parse p -> parse p
       Check p -> check p
       Compile p -> compile p
+      Codegen p -> codegen p
+      Link p -> link p
 
 -- | Parse a program and write the AST to the output file
 parse :: FilePath -> App ()
@@ -53,6 +57,16 @@ parse p = parsed p >>= outputStr (p -<.> "txt") . show
 check :: FilePath -> App ()
 check p = checked p >>= outputStr (p -<.> "txt") . show
 
+-- | Parse, type-check and IR codegen a program and write the IR to the output
+-- file
+codegen :: FilePath -> App ()
+codegen p =
+  do
+    tast <- checked p
+    cfg <- asks argCompilerConfig
+    out <- outputPath (p -<.> "ll")
+    liftIO $ compileProgramToFile out (cfg {cfgFormat = Assembly}) tast
+
 -- | Parse, type-check and compile a program and write the compiled binary to
 -- the output file
 compile :: FilePath -> App ()
@@ -60,13 +74,13 @@ compile p =
   do
     tast <- checked p
     cfg <- asks argCompilerConfig
-    out <-
-      outputPath
-        ( p -<.> case cfgFormat cfg of
-            Assembly -> "ll"
-            NativeObject -> "o"
-        )
-    liftIO $ compileProgramToFile out cfg tast
+    out <- outputPath (p -<.> "o")
+    liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
+
+-- | Parse, type-check, compile and link a program and write the executable to
+-- the output file
+link :: [FilePath] -> App ()
+link ps = pure ()
 
 -- | Parse a file into an AST
 parsed :: FilePath -> App Program
