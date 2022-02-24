@@ -32,7 +32,7 @@ data ExprF e
   | EBlock (BlockF e)
   | EIf e (BlockF e) (BlockF e)
   | EWhile e (BlockF e)
-  | EFor e e e (BlockF e)
+  | EFor (StmtF e) e e (BlockF e)
   | ECall Ident [e]
   | EAssign Ident e
   | EBinop Binop e e
