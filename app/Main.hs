@@ -3,6 +3,7 @@
 module Main (main) where
 
 import Args
+import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Foldable
@@ -14,8 +15,8 @@ import Koa.Syntax
 import System.Exit
 import System.FilePath
 import System.IO
-
--- import System.IO.Temp
+import System.IO.Temp
+import System.Process
 
 newtype App a = App {runApp :: ReaderT Args (ExceptT () IO) a}
   deriving
@@ -24,8 +25,14 @@ newtype App a = App {runApp :: ReaderT Args (ExceptT () IO) a}
       Monad,
       MonadIO,
       MonadReader Args,
-      MonadError ()
+      MonadError (),
+      MonadMask,
+      MonadCatch
     )
+
+-- | Required by MonadMask and MonadCatch
+instance MonadThrow App where
+  throwM = App . throwM
 
 -- | The main entry point
 main :: IO ()
@@ -77,10 +84,25 @@ compile p =
     out <- outputPath (p -<.> "o")
     liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
 
--- | Parse, type-check, compile and link a program and write the executable to
--- the output file
+-- | Compile all input files if necessary and link them into an executable
 link :: [FilePath] -> App ()
-link ps = pure ()
+link ps = compileAllAndLink ps []
+
+-- | Parse, type-check and compile all input files in temporary files if
+-- necessary and link them into an executable
+compileAllAndLink :: [FilePath] -> [FilePath] -> App ()
+compileAllAndLink [] objs = do
+  out <- outputPath "a.out"
+  _ <- liftIO $ rawSystem "gcc" (objs ++ ["-o", out])
+  pure ()
+compileAllAndLink (p : ps) objs = case ".koa" `isExtensionOf` p of
+  False -> compileAllAndLink ps (p : objs)
+  True -> withSystemTempFile "koa.o" $ \out _ ->
+    do
+      tast <- checked p
+      cfg <- asks argCompilerConfig
+      liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
+      compileAllAndLink ps (out : objs)
 
 -- | Parse a file into an AST
 parsed :: FilePath -> App Program
