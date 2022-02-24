@@ -49,6 +49,15 @@ genModule :: ProgramT -> AST.Module
 genModule (Program defs) = buildModule "__main_module" $ traverse_ genDef defs
 
 genDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
+genDef (DFn (Ident "main") args TInt32 body) =
+  function (AST.mkName "__koa_main") (arg <$> args) LLVMType.i32 $ genBody body
+  where
+    arg = error "unimplemented genDef.arg"
+genDef (DFn (Ident "main") args TEmpty body) =
+  function (AST.mkName "__koa_main") (arg <$> args) LLVMType.i32 $ \ops ->
+    genBody body ops <* ret (int32 0)
+  where
+    arg = error "unimplemented genDef.arg"
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
   where
