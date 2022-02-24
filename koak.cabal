@@ -41,6 +41,7 @@ library
     , comparse ==0.2.*
     , directory >=1.3.6 && <1.4
     , exceptions ==0.10.*
+    , file-embed ==0.0.15.*
     , llvm-hs >=9.0.1 && <9.1
     , llvm-hs-pure ==9.0.*
     , mtl ==2.2.*
@@ -65,6 +66,7 @@ executable koak
     , comparse ==0.2.*
     , directory >=1.3.6 && <1.4
     , exceptions ==0.10.*
+    , file-embed ==0.0.15.*
     , filepath ==1.4.*
     , koak
     , llvm-hs >=9.0.1 && <9.1
@@ -104,6 +106,7 @@ test-suite koak-test
     , comparse ==0.2.*
     , directory >=1.3.6 && <1.4
     , exceptions ==0.10.*
+    , file-embed ==0.0.15.*
     , koak
     , llvm-hs >=9.0.1 && <9.1
     , llvm-hs-pure ==9.0.*

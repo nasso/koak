@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main (main) where
 
@@ -6,6 +7,7 @@ import Args
 import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
+import Data.FileEmbed
 import Data.Foldable
 import Data.Maybe
 import Koa.Analyser
@@ -91,10 +93,15 @@ link ps = compileAllAndLink ps []
 -- | Parse, type-check and compile all input files in temporary files if
 -- necessary and link them into an executable
 compileAllAndLink :: [FilePath] -> [FilePath] -> App ()
-compileAllAndLink [] objs = do
-  out <- outputPath "a.out"
-  _ <- liftIO $ rawSystem "gcc" (objs ++ ["-o", out])
-  pure ()
+compileAllAndLink [] objs = withSystemTempFile "main.c" $ \p h ->
+  do
+    _ <- liftIO $ hPutStr h entry
+    _ <- liftIO $ hFlush h
+    out <- outputPath "a.out"
+    _ <- liftIO $ rawSystem "gcc" (p : objs ++ ["-o", out])
+    pure ()
+  where
+    entry = $(embedStringFile "src/entry.c") :: String
 compileAllAndLink (p : ps) objs = case ".koa" `isExtensionOf` p of
   False -> compileAllAndLink ps (p : objs)
   True -> withSystemTempFile "koa.o" $ \out _ ->
