@@ -25,7 +25,7 @@ IfExpr ::= "if" Expr BlockExpr ("else" "if" BlockExpr)* ("else" Expr)?
 
 WhileExpr ::= "while" Expr BlockExpr
 
-ForExpr ::= "for" Stmt "," Expr "," Stmt BlockExpr
+ForExpr ::= "for" Stmt "," Expr "," Expr BlockExpr
 
 FnCallExpr ::= Expr "(" ExprList? ")"
 
