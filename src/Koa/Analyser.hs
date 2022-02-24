@@ -231,7 +231,15 @@ expression (Expr (EBlock b)) =
   do
     b' <- block b
     pure $ ExprT (EBlock b', blockType b')
-expression (Expr EFor {}) = error "not implemented: expression EFor"
+expression (Expr (EFor initStmt condExpr updateExpr body)) =
+  withStatement initStmt $ \initStmt' ->
+    do
+      condExpr'@(ExprT (_, condTy)) <- expression condExpr
+      updateExpr' <- expression updateExpr
+      when (condTy /= TBool) $
+        throwError (ETypeMismatch TBool condTy, LExpr condExpr)
+      body' <- block body
+      pure $ ExprT (EFor initStmt' condExpr' updateExpr' body', blockType body')
 
 -- | Look up a function in the analyser context.
 lookupFunction :: Ident -> Analyser ([Type], Type)
