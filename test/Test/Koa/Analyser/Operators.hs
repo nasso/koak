@@ -37,6 +37,42 @@ validPrograms =
             [ DFn (Ident "foo") [] TBool $
                 BExpr [] $ ExprT (EBinop OEquals (litI32 1) (litI32 2), TBool)
             ]
+        ),
+    testCase "unary minus on i32" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $ Expr (EUnop ONeg $ litI32 1)
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $ ExprT (EUnop ONeg $ litI32 1, TInt32)
+            ]
+        ),
+    testCase "unary minus on f64" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TFloat64 $
+                BExpr [] $ Expr (EUnop ONeg $ litF64 1)
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TFloat64 $
+                BExpr [] $ ExprT (EUnop ONeg $ litF64 1, TFloat64)
+            ]
+        ),
+    testCase "negate boolean" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TBool $
+                BExpr [] $ Expr (EUnop ONot $ litBool False)
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TBool $
+                BExpr [] $ ExprT (EUnop ONot $ litBool False, TBool)
+            ]
         )
   ]
 
@@ -73,5 +109,45 @@ invalidPrograms =
                 BExpr [] $ Expr (EBinop OLessThan (litBool True) (litBool True))
             ]
         )
-        (EInvalidBinop OLessThan TBool TBool)
+        (EInvalidBinop OLessThan TBool TBool),
+    testCase "unary minus on boolean" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TBool $
+                BExpr [] $ Expr (EUnop ONeg $ litBool False)
+            ]
+        )
+        (EInvalidUnop ONeg TBool),
+    testCase "unary minus on empty" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TEmpty $
+                BExpr [] $ Expr (EUnop ONeg litEmpty)
+            ]
+        )
+        (EInvalidUnop ONeg TEmpty),
+    testCase "boolean not on empty" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TEmpty $
+                BExpr [] $ Expr (EUnop ONot litEmpty)
+            ]
+        )
+        (EInvalidUnop ONot TEmpty),
+    testCase "boolean not on i32" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $ Expr (EUnop ONot $ litI32 1)
+            ]
+        )
+        (EInvalidUnop ONot TInt32),
+    testCase "boolean not on f64" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TFloat64 $
+                BExpr [] $ Expr (EUnop ONot $ litF64 1)
+            ]
+        )
+        (EInvalidUnop ONot TFloat64)
   ]
