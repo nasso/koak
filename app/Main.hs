@@ -95,8 +95,7 @@ link ps = compileAllAndLink ps []
 compileAllAndLink :: [FilePath] -> [FilePath] -> App ()
 compileAllAndLink [] objs = withSystemTempFile "main.c" $ \p h ->
   do
-    _ <- liftIO $ hPutStr h entry
-    _ <- liftIO $ hFlush h
+    _ <- liftIO $ hPutStr h entry >> hFlush h
     out <- outputPath "a.out"
     _ <- liftIO $ rawSystem "gcc" (p : objs ++ ["-o", out])
     pure ()
