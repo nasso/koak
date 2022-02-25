@@ -61,6 +61,70 @@ validPrograms =
                       TEmpty
                     )
             ]
+        ),
+    testCase "for loop" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $
+                  Expr
+                    ( EFor
+                        (SLet (PMutIdent $ Ident "i") Nothing (litI32 0))
+                        ( Expr
+                            ( EBinop
+                                OLessThan
+                                (Expr (EIdent $ Ident "i"))
+                                (litI32 10)
+                            )
+                        )
+                        ( Expr
+                            ( EAssign
+                                (Ident "i")
+                                ( Expr
+                                    ( EBinop
+                                        OAdd
+                                        (Expr (EIdent $ Ident "i"))
+                                        (litI32 1)
+                                    )
+                                )
+                            )
+                        )
+                        (BExpr [] $ Expr (EIdent $ Ident "i"))
+                    )
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr [] $
+                  ExprT
+                    ( EFor
+                        (SLet (PMutIdent $ Ident "i") (Just TInt32) (litI32 0))
+                        ( ExprT
+                            ( EBinop
+                                OLessThan
+                                (ExprT (EIdent $ Ident "i", TInt32))
+                                (litI32 10),
+                              TBool
+                            )
+                        )
+                        ( ExprT
+                            ( EAssign
+                                (Ident "i")
+                                ( ExprT
+                                    ( EBinop
+                                        OAdd
+                                        (ExprT (EIdent $ Ident "i", TInt32))
+                                        (litI32 1),
+                                      TInt32
+                                    )
+                                ),
+                              TInt32
+                            )
+                        )
+                        (BExpr [] $ ExprT (EIdent $ Ident "i", TInt32)),
+                      TInt32
+                    )
+            ]
         )
   ]
 
@@ -97,6 +161,20 @@ invalidPrograms =
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $ Expr $ EWhile litEmpty $ BExpr [] litEmpty
+            ]
+        )
+        (ETypeMismatch TBool TEmpty),
+    testCase "for loop condition isn't a boolean" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TEmpty $
+                BExpr [] $
+                  Expr $
+                    EFor
+                      (SExpr litEmpty)
+                      litEmpty
+                      litEmpty
+                      (BExpr [] litEmpty)
             ]
         )
         (ETypeMismatch TBool TEmpty)
