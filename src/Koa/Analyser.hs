@@ -37,6 +37,7 @@ data AnalyserErrorType
   = EUndefinedSymbol Ident
   | ETypeMismatch {eExpected :: Type, eActual :: Type}
   | EInvalidBinop Binop Type Type
+  | EInvalidUnop Unop Type
   | EMutationOfImmutable Ident
   | EWarn AnalyserWarningType
   | ENotAFunction Ident
@@ -198,7 +199,12 @@ expression e@(Expr (EBinop op lhs rhs)) =
     case binopOutput op lhsTy rhsTy of
       Nothing -> throwError (EInvalidBinop op lhsTy rhsTy, LExpr e)
       Just outputTy -> pure $ ExprT (EBinop op lhs' rhs', outputTy)
-expression (Expr (EUnop _ _)) = error "not implemented: expression EUnop"
+expression e@(Expr (EUnop op val)) =
+  do
+    val'@(ExprT (_, valTy)) <- expression val
+    case unopOutput op valTy of
+      Nothing -> throwError (EInvalidUnop op valTy, LExpr e)
+      Just outputTy -> pure $ ExprT (EUnop op val', outputTy)
 expression e@(Expr (EIf cond then' else')) =
   do
     cond'@(ExprT (_, condTy)) <- expression cond
@@ -289,6 +295,12 @@ binopOutput OGreaterThanEq lhs rhs | isOrd lhs && lhs == rhs = Just TBool
 binopOutput OLessThan lhs rhs | isOrd lhs && lhs == rhs = Just TBool
 binopOutput OLessThanEq lhs rhs | isOrd lhs && lhs == rhs = Just TBool
 binopOutput _ _ _ = Nothing
+
+-- | The output type of a unary operator, given the type of its operand.
+unopOutput :: Unop -> Type -> Maybe Type
+unopOutput ONot TBool = Just TBool
+unopOutput ONeg ty | isNum ty = Just ty
+unopOutput _ _ = Nothing
 
 -- | Determine if a type is a numeric type.
 isNum :: Type -> Bool
