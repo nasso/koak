@@ -8,7 +8,7 @@ module Koa.Compiler
 where
 
 import Data.Foldable
-import Koa.Syntax
+import Koa.Syntax.HIR
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.IntegerPredicate as IPred
 import qualified LLVM.AST.Type as LLVMType

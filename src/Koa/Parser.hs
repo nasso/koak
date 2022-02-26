@@ -10,7 +10,7 @@ where
 import Control.Monad
 import Control.Monad.Parser
 import Data.Char
-import Koa.Syntax
+import Koa.Syntax.HIR
 
 -- | Parser configuration.
 data ParserConfig = ParserConfig

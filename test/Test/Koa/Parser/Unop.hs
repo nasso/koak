@@ -1,6 +1,6 @@
 module Test.Koa.Parser.Unop (unopTests) where
 
-import Koa.Syntax
+import Koa.Syntax.HIR
 import Test.Koa.Parser.Utils
 import Test.Tasty
 import Test.Tasty.HUnit

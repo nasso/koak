@@ -1,7 +1,7 @@
 module Test.Koa.Analyser.Functions (functionsTests) where
 
 import Koa.Analyser
-import Koa.Syntax
+import Koa.Syntax.HIR
 import Test.Koa.Analyser.Util
 import Test.Koa.Util
 import Test.Tasty

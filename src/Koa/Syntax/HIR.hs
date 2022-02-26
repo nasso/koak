@@ -1,4 +1,4 @@
-module Koa.Syntax where
+module Koa.Syntax.HIR where
 
 -- | AST for a program.
 newtype ProgramF e = Program [DefinitionF e] deriving (Eq, Show)

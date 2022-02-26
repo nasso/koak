@@ -12,7 +12,7 @@ import Koa.Analyser
 import Koa.Compiler
 import Koa.Linker
 import Koa.Parser
-import Koa.Syntax
+import Koa.Syntax.HIR
 import System.Exit
 import System.FilePath
 import System.IO

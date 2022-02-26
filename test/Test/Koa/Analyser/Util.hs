@@ -1,7 +1,7 @@
 module Test.Koa.Analyser.Util where
 
 import Koa.Analyser
-import Koa.Syntax
+import Koa.Syntax.HIR
 import Test.Tasty.HUnit
 
 defaultConfig :: AnalyserConfig

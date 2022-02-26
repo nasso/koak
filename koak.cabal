@@ -29,7 +29,7 @@ library
       Koa.Compiler
       Koa.Linker
       Koa.Parser
-      Koa.Syntax
+      Koa.Syntax.HIR
       Lib
   other-modules:
       Paths_koak

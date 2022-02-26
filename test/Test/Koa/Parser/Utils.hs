@@ -1,7 +1,7 @@
 module Test.Koa.Parser.Utils (assertProgram, assertExpr, assertError) where
 
 import Koa.Parser
-import Koa.Syntax
+import Koa.Syntax.HIR
 import Test.Tasty.HUnit
 
 assertProgram :: String -> Program -> Assertion

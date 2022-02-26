@@ -1,6 +1,6 @@
 module Test.Koa.Util where
 
-import Koa.Syntax
+import Koa.Syntax.HIR
 
 class ExprLike a where
   lit :: Type -> Literal -> a
