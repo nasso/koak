@@ -26,10 +26,14 @@ source-repository head
 library
   exposed-modules:
       Koa.Analyser
+      Koa.Analyser.Monad
+      Koa.Analyser.ToMIR
+      Koa.Analyser.TypeCheck
       Koa.Compiler
       Koa.Linker
       Koa.Parser
       Koa.Syntax.HIR
+      Koa.Syntax.MIR
       Lib
   other-modules:
       Paths_koak
