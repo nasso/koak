@@ -2,20 +2,38 @@ module Test.Koa.Util where
 
 import Koa.Syntax
 
-class FromLit a where
+class ExprLike a where
+  lit :: Type -> Literal -> a
+  var :: Type -> String -> a
+
   litEmpty :: a
+  litEmpty = lit TEmpty LEmpty
+
   litBool :: Bool -> a
+  litBool = lit TBool . LBool
+
   litI32 :: Integer -> a
+  litI32 = lit TInt32 . LInt
+
   litF64 :: Double -> a
+  litF64 = lit TFloat64 . LFloat
 
-instance FromLit Expr where
-  litEmpty = Expr $ ELit LEmpty
-  litBool = Expr . ELit . LBool
-  litI32 = Expr . ELit . LInt
-  litF64 = Expr . ELit . LFloat
+  varEmpty :: String -> a
+  varEmpty = var TEmpty
 
-instance FromLit ExprT where
-  litEmpty = ExprT (ELit LEmpty, TEmpty)
-  litBool b = ExprT (ELit $ LBool b, TBool)
-  litI32 n = ExprT (ELit $ LInt n, TInt32)
-  litF64 r = ExprT (ELit $ LFloat r, TFloat64)
+  varBool :: String -> a
+  varBool = var TBool
+
+  varI32 :: String -> a
+  varI32 = var TInt32
+
+  varF64 :: String -> a
+  varF64 = var TFloat64
+
+instance ExprLike Expr where
+  lit _ = Expr . ELit
+  var _ = Expr . EIdent . Ident
+
+instance ExprLike ExprT where
+  lit t l = ExprT (ELit l, t)
+  var t n = ExprT (EIdent $ Ident n, t)
