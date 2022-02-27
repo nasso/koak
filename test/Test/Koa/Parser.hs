@@ -312,7 +312,7 @@ parserTests =
                   (varI32 "b")
             )
             (varI32 "c"),
-    testCase "function returning 0 keyword" $
+    testCase "return statement returning 0" $
       assertProgram "fn f(): i32 { return 0; }\n" $
         Program
           [ DFn
@@ -324,7 +324,7 @@ parserTests =
                   Nothing
               )
           ],
-    testCase "function returning void keyword" $
+    testCase "return statement returning void" $
       assertProgram "fn f(): () { return (); }\n" $
         Program
           [ DFn
@@ -336,7 +336,7 @@ parserTests =
                   Nothing
               )
           ],
-    testCase "function returning void keyword twice" $
+    testCase "return statement returning void twice" $
       assertProgram "fn f(): () { return (); return (); }\n" $
         Program
           [ DFn
