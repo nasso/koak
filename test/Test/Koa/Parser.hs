@@ -2,6 +2,7 @@ module Test.Koa.Parser (parserTests) where
 
 import Koa.Parser
 import Koa.Syntax
+import Test.Koa.Util
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -29,7 +30,7 @@ parserTests =
                 (Ident "main")
                 []
                 TEmpty
-                (BExpr [] $ Just $ Expr $ ELit LEmpty)
+                (BExpr [] $ Just litEmpty)
             ]
         ),
     testCase "main returning zero" $
@@ -42,7 +43,7 @@ parserTests =
                 (Ident "main")
                 []
                 TInt32
-                (BExpr [] $ Just $ Expr $ ELit $ LInt 0)
+                (BExpr [] $ Just $ litI32 0)
             ]
         ),
     testCase "function returning a binary operator" $
@@ -60,8 +61,8 @@ parserTests =
                       Expr $
                         EBinop
                           OAdd
-                          (Expr $ ELit $ LInt 1)
-                          (Expr $ ELit $ LInt 2)
+                          (litI32 1)
+                          (litI32 2)
                 )
             ]
         ),
@@ -80,8 +81,8 @@ parserTests =
                       Expr $
                         EBinop
                           OAdd
-                          (Expr $ EIdent (Ident "a"))
-                          (Expr $ EIdent (Ident "b"))
+                          (varI32 "a")
+                          (varI32 "b")
                 )
             ]
         ),
@@ -90,71 +91,71 @@ parserTests =
         Expr $
           EBinop
             OAdd
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple subtraction expression" $
       assertExpr "a - b" $
         Expr $
           EBinop
             OSub
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple multiplication expression" $
       assertExpr "a * b" $
         Expr $
           EBinop
             OMul
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple division expression" $
       assertExpr "a / b" $
         Expr $
           EBinop
             ODiv
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple not equal expression" $
       assertExpr "a != b" $
         Expr $
           EBinop
             ONotEquals
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple equal expression" $
       assertExpr "a == b" $
         Expr $
           EBinop
             OEquals
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple greater than expression" $
       assertExpr "a > b" $
         Expr $
           EBinop
             OGreaterThan
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple greater than or equal expression" $
       assertExpr "a >= b" $
         Expr $
           EBinop
             OGreaterThanEq
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple less than expression" $
       assertExpr "a < b" $
         Expr $
           EBinop
             OLessThan
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple less than or equal expression" $
       assertExpr "a <= b" $
         Expr $
           EBinop
             OLessThanEq
-            (Expr $ EIdent $ Ident "a")
-            (Expr $ EIdent $ Ident "b"),
+            (varI32 "a")
+            (varI32 "b"),
     testCase "simple multiple add expression" $
       assertExpr "a + b + c" $
         Expr $
@@ -163,10 +164,10 @@ parserTests =
             ( Expr $
                 EBinop
                   OAdd
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "simple multiple sub expressions" $
       assertExpr "a - b - c" $
         Expr $
@@ -175,10 +176,10 @@ parserTests =
             ( Expr $
                 EBinop
                   OSub
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "simple priority mul then add expressions" $
       assertExpr "a * b + c" $
         Expr $
@@ -187,33 +188,33 @@ parserTests =
             ( Expr $
                 EBinop
                   OMul
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "simple priority add then mul expressions" $
       assertExpr "a + b * c" $
         Expr $
           EBinop
             OAdd
-            (Expr $ EIdent $ Ident "a")
+            (varI32 "a")
             ( Expr $
                 EBinop
                   OMul
-                  (Expr $ EIdent $ Ident "b")
-                  (Expr $ EIdent $ Ident "c")
+                  (varI32 "b")
+                  (varI32 "c")
             ),
     testCase "simple priority add then div expressions" $
       assertExpr "a + b / c" $
         Expr $
           EBinop
             OAdd
-            (Expr $ EIdent $ Ident "a")
+            (varI32 "a")
             ( Expr $
                 EBinop
                   ODiv
-                  (Expr $ EIdent $ Ident "b")
-                  (Expr $ EIdent $ Ident "c")
+                  (varI32 "b")
+                  (varI32 "c")
             ),
     testCase "simple priority add then sub expressions" $
       assertExpr "a + b - c" $
@@ -223,10 +224,10 @@ parserTests =
             ( Expr $
                 EBinop
                   OAdd
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "simple priority sub then add expressions" $
       assertExpr "a - b + c" $
         Expr $
@@ -235,21 +236,21 @@ parserTests =
             ( Expr $
                 EBinop
                   OSub
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "simple priority sub then mul expressions" $
       assertExpr "a - b * c" $
         Expr $
           EBinop
             OSub
-            (Expr $ EIdent $ Ident "a")
+            (varI32 "a")
             ( Expr $
                 EBinop
                   OMul
-                  (Expr $ EIdent $ Ident "b")
-                  (Expr $ EIdent $ Ident "c")
+                  (varI32 "b")
+                  (varI32 "c")
             ),
     testCase "simple priority mul then sub expressions" $
       assertExpr "a * b - c" $
@@ -259,10 +260,10 @@ parserTests =
             ( Expr $
                 EBinop
                   OMul
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "simple priority mul then div expressions" $
       assertExpr "a * b / c" $
         Expr $
@@ -271,10 +272,10 @@ parserTests =
             ( Expr $
                 EBinop
                   OMul
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "simple priority div then mul expressions" $
       assertExpr "a / b * c" $
         Expr $
@@ -283,10 +284,10 @@ parserTests =
             ( Expr $
                 EBinop
                   ODiv
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "multiple div expressions" $
       assertExpr "a / b / c" $
         Expr $
@@ -295,10 +296,10 @@ parserTests =
             ( Expr $
                 EBinop
                   ODiv
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c"),
+            (varI32 "c"),
     testCase "multiple mul expressions" $
       assertExpr "a * b * c" $
         Expr $
@@ -307,10 +308,10 @@ parserTests =
             ( Expr $
                 EBinop
                   OMul
-                  (Expr $ EIdent $ Ident "a")
-                  (Expr $ EIdent $ Ident "b")
+                  (varI32 "a")
+                  (varI32 "b")
             )
-            (Expr $ EIdent $ Ident "c")
+            (varI32 "c")
   ]
 
 assertProgram :: String -> Program -> Assertion

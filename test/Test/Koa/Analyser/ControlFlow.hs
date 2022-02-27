@@ -3,6 +3,7 @@ module Test.Koa.Analyser.ControlFlow (controlFlowTests) where
 import Koa.Analyser
 import Koa.Syntax
 import Test.Koa.Analyser.Util
+import Test.Koa.Util
 import Test.Tasty
 import Test.Tasty.HUnit
 
