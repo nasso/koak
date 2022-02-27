@@ -83,6 +83,9 @@ test-suite koak-test
       Test.Koa.Analyser.Variables
       Test.Koa.Compiler
       Test.Koa.Parser
+      Test.Koa.Parser.Binop
+      Test.Koa.Parser.Returns
+      Test.Koa.Parser.Utils
       Test.Koa.Util
       Paths_koak
   hs-source-dirs:
