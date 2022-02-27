@@ -55,12 +55,12 @@ genDef (DFn (Ident name) args rety body) =
     arg = error "unimplemented genDef.arg"
 
 genBody :: MonadIRBuilder m => BlockT -> [AST.Operand] -> m ()
-genBody (BExpr [] expr@(ExprT (_, TEmpty))) [] =
+genBody (BExpr [] (Just expr@(ExprT (_, TEmpty)))) [] =
   do
     _ <- block `named` "entry"
     _ <- genExpr expr
     retVoid
-genBody (BExpr [] expr) [] =
+genBody (BExpr [] (Just expr)) [] =
   do
     _ <- block `named` "entry"
     res <- genExpr expr

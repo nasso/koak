@@ -152,8 +152,10 @@ checkBlock expectedTy b =
 
 -- | Analyse a block.
 block :: Block -> Analyser BlockT
-block (BExpr stmts e) =
-  withStatements stmts $ \stmts' -> BExpr stmts' <$> expression e
+block (BExpr stmts (Just e)) =
+  withStatements stmts $ \stmts' -> BExpr stmts' . Just <$> expression e
+block (BExpr stmts Nothing) =
+  block $ BExpr stmts (Just $ Expr $ ELit LEmpty)
 
 -- | Analyse a series of statements and run a computation in the modified scope.
 withStatements :: [Stmt] -> ([StmtT] -> Analyser a) -> Analyser a
@@ -269,7 +271,8 @@ lookupVar ident@(Ident name) =
 
 -- | Get the type of a block.
 blockType :: BlockT -> Type
-blockType (BExpr _ (ExprT (_, ty))) = ty
+blockType (BExpr _ (Just (ExprT (_, ty)))) = ty
+blockType (BExpr _ Nothing) = TEmpty
 
 -- | Get the type of a literal.
 --

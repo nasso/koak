@@ -16,7 +16,7 @@ parserTests =
                 (Ident "main")
                 []
                 TEmpty
-                (BExpr [] $ Expr $ ELit LEmpty)
+                (BExpr [] Nothing)
             ]
         ),
     testCase "main returning empty" $
@@ -29,7 +29,7 @@ parserTests =
                 (Ident "main")
                 []
                 TEmpty
-                (BExpr [] $ Expr $ ELit LEmpty)
+                (BExpr [] $ Just $ Expr $ ELit LEmpty)
             ]
         ),
     testCase "main returning zero" $
@@ -42,7 +42,7 @@ parserTests =
                 (Ident "main")
                 []
                 TInt32
-                (BExpr [] $ Expr $ ELit $ LInt 0)
+                (BExpr [] $ Just $ Expr $ ELit $ LInt 0)
             ]
         ),
     testCase "function returning a binary operator" $
@@ -56,11 +56,12 @@ parserTests =
                 []
                 TInt32
                 ( BExpr [] $
-                    Expr $
-                      EBinop
-                        OAdd
-                        (Expr $ ELit $ LInt 1)
-                        (Expr $ ELit $ LInt 2)
+                    Just $
+                      Expr $
+                        EBinop
+                          OAdd
+                          (Expr $ ELit $ LInt 1)
+                          (Expr $ ELit $ LInt 2)
                 )
             ]
         ),
@@ -75,11 +76,12 @@ parserTests =
                 []
                 TInt32
                 ( BExpr [] $
-                    Expr $
-                      EBinop
-                        OAdd
-                        (Expr $ EIdent (Ident "a"))
-                        (Expr $ EIdent (Ident "b"))
+                    Just $
+                      Expr $
+                        EBinop
+                          OAdd
+                          (Expr $ EIdent (Ident "a"))
+                          (Expr $ EIdent (Ident "b"))
                 )
             ]
         ),
