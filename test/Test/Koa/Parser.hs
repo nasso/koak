@@ -311,7 +311,45 @@ parserTests =
                   (varI32 "a")
                   (varI32 "b")
             )
-            (varI32 "c")
+            (varI32 "c"),
+    testCase "return statement returning 0" $
+      assertProgram "fn f(): i32 { return 0; }\n" $
+        Program
+          [ DFn
+              (Ident "f")
+              []
+              TInt32
+              ( BExpr
+                  [SReturn $ litI32 0]
+                  Nothing
+              )
+          ],
+    testCase "return statement returning void" $
+      assertProgram "fn f(): () { return (); }\n" $
+        Program
+          [ DFn
+              (Ident "f")
+              []
+              TEmpty
+              ( BExpr
+                  [SReturn litEmpty]
+                  Nothing
+              )
+          ],
+    testCase "return statement returning void twice" $
+      assertProgram "fn f(): () { return (); return (); }\n" $
+        Program
+          [ DFn
+              (Ident "f")
+              []
+              TEmpty
+              ( BExpr
+                  [ SReturn litEmpty,
+                    SReturn litEmpty
+                  ]
+                  Nothing
+              )
+          ]
   ]
 
 assertProgram :: String -> Program -> Assertion
