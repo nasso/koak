@@ -19,84 +19,84 @@ validPrograms =
       assertValidProgram
         ( Program
             [ DFn (Ident "main") [] TEmpty $
-                BExpr [] litEmpty
+                BExpr [] $ Just litEmpty
             ]
         )
         ( Program
             [ DFn (Ident "main") [] TEmpty $
-                BExpr [] litEmpty
+                BExpr [] $ Just litEmpty
             ]
         ),
     testCase "function returning zero" $
       assertValidProgram
         ( Program
             [ DFn (Ident "main") [] TInt32 $
-                BExpr [] $ litI32 0
+                BExpr [] $ Just $ litI32 0
             ]
         )
         ( Program
             [ DFn (Ident "main") [] TInt32 $
-                BExpr [] $ litI32 0
+                BExpr [] $ Just $ litI32 0
             ]
         ),
     testCase "many functions" $
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0,
+                BExpr [] $ Just $ litI32 0,
               DFn (Ident "bar") [] TEmpty $
-                BExpr [] litEmpty
+                BExpr [] $ Just litEmpty
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0,
+                BExpr [] $ Just $ litI32 0,
               DFn (Ident "bar") [] TEmpty $
-                BExpr [] litEmpty
+                BExpr [] $ Just litEmpty
             ]
         ),
     testCase "call function defined before caller" $
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0,
+                BExpr [] $ Just $ litI32 0,
               DFn (Ident "bar") [] TInt32 $
-                BExpr [] $ Expr (ECall (Ident "foo") [])
+                BExpr [] $ Just $ Expr (ECall (Ident "foo") [])
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0,
+                BExpr [] $ Just $ litI32 0,
               DFn (Ident "bar") [] TInt32 $
-                BExpr [] $ ExprT (ECall (Ident "foo") [], TInt32)
+                BExpr [] $ Just $ ExprT (ECall (Ident "foo") [], TInt32)
             ]
         ),
     testCase "call function defined after caller" $
       assertValidProgram
         ( Program
             [ DFn (Ident "bar") [] TInt32 $
-                BExpr [] $ Expr (ECall (Ident "foo") []),
+                BExpr [] $ Just $ Expr (ECall (Ident "foo") []),
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0
+                BExpr [] $ Just $ litI32 0
             ]
         )
         ( Program
             [ DFn (Ident "bar") [] TInt32 $
-                BExpr [] $ ExprT (ECall (Ident "foo") [], TInt32),
+                BExpr [] $ Just $ ExprT (ECall (Ident "foo") [], TInt32),
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0
+                BExpr [] $ Just $ litI32 0
             ]
         ),
     testCase "self-calling function" $
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ Expr (ECall (Ident "foo") [])
+                BExpr [] $ Just $ Expr (ECall (Ident "foo") [])
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ ExprT (ECall (Ident "foo") [], TInt32)
+                BExpr [] $ Just $ ExprT (ECall (Ident "foo") [], TInt32)
             ]
         ),
     testCase "call statement" $
@@ -105,18 +105,18 @@ validPrograms =
             [ DFn (Ident "bar") [] TEmpty $
                 BExpr
                   [SExpr $ Expr (ECall (Ident "foo") [])]
-                  litEmpty,
+                  $ Just litEmpty,
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0
+                BExpr [] $ Just $ litI32 0
             ]
         )
         ( Program
             [ DFn (Ident "bar") [] TEmpty $
                 BExpr
                   [SExpr $ ExprT (ECall (Ident "foo") [], TInt32)]
-                  litEmpty,
+                  $ Just litEmpty,
               DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0
+                BExpr [] $ Just $ litI32 0
             ]
         ),
     testCase "function taking a parameter" $
@@ -126,7 +126,7 @@ validPrograms =
                 (Ident "identity")
                 [TBinding (PIdent $ Ident "a") TInt32]
                 TInt32
-                $ BExpr [] $ Expr (EIdent $ Ident "a")
+                $ BExpr [] $ Just $ Expr (EIdent $ Ident "a")
             ]
         )
         ( Program
@@ -134,7 +134,7 @@ validPrograms =
                 (Ident "identity")
                 [TBinding (PIdent $ Ident "a") TInt32]
                 TInt32
-                $ BExpr [] $ ExprT (EIdent $ Ident "a", TInt32)
+                $ BExpr [] $ Just $ ExprT (EIdent $ Ident "a", TInt32)
             ]
         ),
     testCase "mutable parameter" $
@@ -146,7 +146,7 @@ validPrograms =
                 TEmpty
                 $ BExpr
                   [SExpr $ Expr (EAssign (Ident "a") (litI32 0))]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         ( Program
@@ -156,7 +156,7 @@ validPrograms =
                 TEmpty
                 $ BExpr
                   [SExpr $ ExprT (EAssign (Ident "a") (litI32 0), TInt32)]
-                  litEmpty
+                  $ Just litEmpty
             ]
         ),
     testCase "function call with one argument" $
@@ -166,9 +166,9 @@ validPrograms =
                 (Ident "identity")
                 [TBinding (PIdent $ Ident "a") TInt32]
                 TInt32
-                $ BExpr [] $ Expr (EIdent $ Ident "a"),
+                $ BExpr [] $ Just $ Expr (EIdent $ Ident "a"),
               DFn (Ident "main") [] TInt32 $
-                BExpr [] $ Expr (ECall (Ident "identity") [litI32 0])
+                BExpr [] $ Just $ Expr (ECall (Ident "identity") [litI32 0])
             ]
         )
         ( Program
@@ -176,9 +176,10 @@ validPrograms =
                 (Ident "identity")
                 [TBinding (PIdent $ Ident "a") TInt32]
                 TInt32
-                $ BExpr [] $ ExprT (EIdent $ Ident "a", TInt32),
+                $ BExpr [] $ Just $ ExprT (EIdent $ Ident "a", TInt32),
               DFn (Ident "main") [] TInt32 $
-                BExpr [] $ ExprT (ECall (Ident "identity") [litI32 0], TInt32)
+                BExpr [] $
+                  Just $ ExprT (ECall (Ident "identity") [litI32 0], TInt32)
             ]
         ),
     testCase "add function" $
@@ -191,17 +192,19 @@ validPrograms =
                 ]
                 TInt32
                 $ BExpr [] $
-                  Expr
-                    ( EBinop
-                        OAdd
-                        (Expr (EIdent $ Ident "a"))
-                        (Expr (EIdent $ Ident "b"))
-                    ),
+                  Just $
+                    Expr
+                      ( EBinop
+                          OAdd
+                          (Expr (EIdent $ Ident "a"))
+                          (Expr (EIdent $ Ident "b"))
+                      ),
               DFn (Ident "main") [] TInt32 $
                 BExpr [] $
-                  Expr
-                    ( ECall (Ident "add") [litI32 1, litI32 2]
-                    )
+                  Just $
+                    Expr
+                      ( ECall (Ident "add") [litI32 1, litI32 2]
+                      )
             ]
         )
         ( Program
@@ -212,19 +215,21 @@ validPrograms =
                 ]
                 TInt32
                 $ BExpr [] $
-                  ExprT
-                    ( EBinop
-                        OAdd
-                        (ExprT (EIdent $ Ident "a", TInt32))
-                        (ExprT (EIdent $ Ident "b", TInt32)),
-                      TInt32
-                    ),
+                  Just $
+                    ExprT
+                      ( EBinop
+                          OAdd
+                          (ExprT (EIdent $ Ident "a", TInt32))
+                          (ExprT (EIdent $ Ident "b", TInt32)),
+                        TInt32
+                      ),
               DFn (Ident "main") [] TInt32 $
                 BExpr [] $
-                  ExprT
-                    ( ECall (Ident "add") [litI32 1, litI32 2],
-                      TInt32
-                    )
+                  Just $
+                    ExprT
+                      ( ECall (Ident "add") [litI32 1, litI32 2],
+                        TInt32
+                      )
             ]
         )
   ]
@@ -235,7 +240,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "main") [] TEmpty $
-                BExpr [] $ litI32 0
+                BExpr [] $ Just $ litI32 0
             ]
         )
         (ETypeMismatch TEmpty TInt32),
@@ -243,7 +248,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "bar") [] TEmpty $
-                BExpr [] $ Expr (ECall (Ident "foo") [])
+                BExpr [] $ Just $ Expr (ECall (Ident "foo") [])
             ]
         )
         (EUndefinedSymbol $ Ident "foo"),
@@ -251,9 +256,9 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
-                BExpr [] $ litI32 0,
+                BExpr [] $ Just $ litI32 0,
               DFn (Ident "bar") [] TEmpty $
-                BExpr [] $ Expr (ECall (Ident "foo") [])
+                BExpr [] $ Just $ Expr (ECall (Ident "foo") [])
             ]
         )
         (ETypeMismatch TEmpty TInt32),
@@ -264,9 +269,9 @@ invalidPrograms =
                 (Ident "identity")
                 [TBinding (PIdent $ Ident "a") TInt32]
                 TInt32
-                $ BExpr [] $ Expr (EIdent $ Ident "a"),
+                $ BExpr [] $ Just $ Expr (EIdent $ Ident "a"),
               DFn (Ident "main") [] TInt32 $
-                BExpr [] $ Expr (ECall (Ident "identity") [])
+                BExpr [] $ Just $ Expr (ECall (Ident "identity") [])
             ]
         )
         EInvalidArguments,
@@ -277,9 +282,10 @@ invalidPrograms =
                 (Ident "identity")
                 [TBinding (PIdent $ Ident "a") TInt32]
                 TInt32
-                $ BExpr [] $ Expr (EIdent $ Ident "a"),
+                $ BExpr [] $ Just $ Expr (EIdent $ Ident "a"),
               DFn (Ident "main") [] TInt32 $
-                BExpr [] $ Expr (ECall (Ident "identity") [litI32 0, litI32 1])
+                BExpr [] $
+                  Just $ Expr (ECall (Ident "identity") [litI32 0, litI32 1])
             ]
         )
         EInvalidArguments,
@@ -290,9 +296,9 @@ invalidPrograms =
                 (Ident "identity")
                 [TBinding (PIdent $ Ident "a") TInt32]
                 TInt32
-                $ BExpr [] $ Expr (EIdent $ Ident "a"),
+                $ BExpr [] $ Just $ Expr (EIdent $ Ident "a"),
               DFn (Ident "main") [] TInt32 $
-                BExpr [] $ Expr (ECall (Ident "identity") [litBool True])
+                BExpr [] $ Just $ Expr (ECall (Ident "identity") [litBool True])
             ]
         )
         EInvalidArguments,
@@ -305,7 +311,7 @@ invalidPrograms =
                 TEmpty
                 $ BExpr
                   [SExpr $ Expr (EAssign (Ident "a") (litI32 0))]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         (EMutationOfImmutable $ Ident "a")

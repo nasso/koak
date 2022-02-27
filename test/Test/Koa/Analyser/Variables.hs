@@ -24,7 +24,7 @@ validPrograms =
                       Nothing
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         ( Program
@@ -35,7 +35,7 @@ validPrograms =
                       (Just TInt32)
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         ),
     testCase "define mutable variable" $
@@ -48,7 +48,7 @@ validPrograms =
                       Nothing
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         ( Program
@@ -59,7 +59,7 @@ validPrograms =
                       (Just TInt32)
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         ),
     testCase "define immutable variable with explicit typing" $
@@ -72,7 +72,7 @@ validPrograms =
                       (Just TInt32)
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         ( Program
@@ -83,7 +83,7 @@ validPrograms =
                       (Just TInt32)
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         ),
     testCase "define mutable variable with explicit typing" $
@@ -96,7 +96,7 @@ validPrograms =
                       (Just TInt32)
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         ( Program
@@ -107,7 +107,7 @@ validPrograms =
                       (Just TInt32)
                       (litI32 4)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         ),
     testCase "variable reference" $
@@ -117,7 +117,7 @@ validPrograms =
                 BExpr
                   [ SLet (PIdent $ Ident "foo") Nothing (litI32 4)
                   ]
-                  $ Expr (EIdent $ Ident "foo")
+                  $ Just $ Expr (EIdent $ Ident "foo")
             ]
         )
         ( Program
@@ -125,7 +125,7 @@ validPrograms =
                 BExpr
                   [ SLet (PIdent $ Ident "foo") (Just TInt32) (litI32 4)
                   ]
-                  $ ExprT (EIdent $ Ident "foo", TInt32)
+                  $ Just $ ExprT (EIdent $ Ident "foo", TInt32)
             ]
         ),
     testCase "copy variable into another" $
@@ -139,7 +139,7 @@ validPrograms =
                       Nothing
                       (Expr (EIdent $ Ident "foo"))
                   ]
-                  $ Expr (EIdent $ Ident "bar")
+                  $ Just $ Expr (EIdent $ Ident "bar")
             ]
         )
         ( Program
@@ -151,7 +151,7 @@ validPrograms =
                       (Just TInt32)
                       (ExprT (EIdent $ Ident "foo", TInt32))
                   ]
-                  $ ExprT (EIdent $ Ident "bar", TInt32)
+                  $ Just $ ExprT (EIdent $ Ident "bar", TInt32)
             ]
         ),
     testCase "re-assign mutable variable" $
@@ -162,7 +162,7 @@ validPrograms =
                   [ SLet (PMutIdent $ Ident "foo") Nothing (litI32 4),
                     SExpr $ Expr $ EAssign (Ident "foo") $ litI32 5
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         ( Program
@@ -171,7 +171,7 @@ validPrograms =
                   [ SLet (PMutIdent $ Ident "foo") (Just TInt32) (litI32 4),
                     SExpr $ ExprT (EAssign (Ident "foo") $ litI32 5, TInt32)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         ),
     testCase "refer to variable defined in parent scope" $
@@ -187,9 +187,9 @@ validPrograms =
                             Nothing
                             (Expr $ EIdent $ Ident "foo")
                         ]
-                        litEmpty
+                        $ Just litEmpty
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         ( Program
@@ -205,11 +205,11 @@ validPrograms =
                                   (Just TInt32)
                                   (ExprT (EIdent $ Ident "foo", TInt32))
                               ]
-                              litEmpty,
+                              $ Just litEmpty,
                           TEmpty
                         )
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
   ]
@@ -226,7 +226,7 @@ invalidPrograms =
                       (Just TBool)
                       (litI32 1)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         (ETypeMismatch TBool TInt32),
@@ -240,7 +240,7 @@ invalidPrograms =
                       (Just TBool)
                       (litI32 1)
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         (ETypeMismatch TBool TInt32),
@@ -248,7 +248,7 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "main") [] TEmpty $
-                BExpr [] (Expr $ EIdent $ Ident "foo")
+                BExpr [] $ Just $ Expr $ EIdent $ Ident "foo"
             ]
         )
         (EUndefinedSymbol $ Ident "foo"),
@@ -259,7 +259,7 @@ invalidPrograms =
                 BExpr
                   [ SLet (PIdent $ Ident "foo") Nothing (litI32 1)
                   ]
-                  (Expr $ EIdent $ Ident "foo")
+                  $ Just (Expr $ EIdent $ Ident "foo")
             ]
         )
         (ETypeMismatch TEmpty TInt32),
@@ -270,7 +270,7 @@ invalidPrograms =
                 BExpr
                   [ SExpr $ Expr $ EAssign (Ident "foo") $ litI32 4
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         (EUndefinedSymbol $ Ident "foo"),
@@ -282,7 +282,7 @@ invalidPrograms =
                   [ SLet (PIdent $ Ident "foo") Nothing (litI32 4),
                     SExpr $ Expr $ EAssign (Ident "foo") $ litI32 5
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         (EMutationOfImmutable $ Ident "foo"),
@@ -294,7 +294,7 @@ invalidPrograms =
                   [ SLet (PMutIdent $ Ident "foo") Nothing (litI32 4),
                     SExpr $ Expr $ EAssign (Ident "foo") $ litBool True
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         (ETypeMismatch TInt32 TBool),
@@ -306,7 +306,7 @@ invalidPrograms =
                   [ SLet (PIdent $ Ident "foo") Nothing (litI32 4),
                     SExpr $ Expr $ ECall (Ident "foo") []
                   ]
-                  litEmpty
+                  $ Just litEmpty
             ]
         )
         (ENotAFunction $ Ident "foo"),
@@ -319,9 +319,9 @@ invalidPrograms =
                       BExpr
                         [ SLet (PIdent $ Ident "foo") Nothing (litI32 4)
                         ]
-                        litEmpty
+                        $ Just litEmpty
                   ]
-                  (Expr $ EIdent $ Ident "foo")
+                  $ Just (Expr $ EIdent $ Ident "foo")
             ]
         )
         (EUndefinedSymbol $ Ident "foo")

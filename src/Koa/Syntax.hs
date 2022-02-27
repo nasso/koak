@@ -47,7 +47,7 @@ newtype Expr = Expr (ExprF Expr) deriving (Eq, Show)
 newtype ExprT = ExprT (ExprF ExprT, Type) deriving (Eq, Show)
 
 -- | A list of statements, evaluating to a final expression.
-data BlockF e = BExpr [StmtF e] e deriving (Eq, Show)
+data BlockF e = BExpr [StmtF e] (Maybe e) deriving (Eq, Show)
 
 -- | AST for an untyped block expression.
 type Block = BlockF Expr

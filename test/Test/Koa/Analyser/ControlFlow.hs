@@ -19,24 +19,26 @@ validPrograms =
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
                 BExpr [] $
-                  Expr
-                    ( EIf
-                        (litBool True)
-                        (BExpr [] $ litI32 0)
-                        (BExpr [] $ litI32 1)
-                    )
+                  Just $
+                    Expr
+                      ( EIf
+                          (litBool True)
+                          (BExpr [] $ Just $ litI32 0)
+                          (BExpr [] $ Just $ litI32 1)
+                      )
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
                 BExpr [] $
-                  ExprT
-                    ( EIf
-                        (litBool True)
-                        (BExpr [] $ litI32 0)
-                        (BExpr [] $ litI32 1),
-                      TInt32
-                    )
+                  Just $
+                    ExprT
+                      ( EIf
+                          (litBool True)
+                          (BExpr [] $ Just $ litI32 0)
+                          (BExpr [] $ Just $ litI32 1),
+                        TInt32
+                      )
             ]
         ),
     testCase "while loop" $
@@ -44,22 +46,24 @@ validPrograms =
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $
-                  Expr
-                    ( EWhile
-                        (litBool True)
-                        (BExpr [] litEmpty)
-                    )
+                  Just $
+                    Expr
+                      ( EWhile
+                          (litBool True)
+                          (BExpr [] $ Just litEmpty)
+                      )
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $
-                  ExprT
-                    ( EWhile
-                        (litBool True)
-                        (BExpr [] litEmpty),
-                      TEmpty
-                    )
+                  Just $
+                    ExprT
+                      ( EWhile
+                          (litBool True)
+                          (BExpr [] $ Just litEmpty),
+                        TEmpty
+                      )
             ]
         ),
     testCase "for loop" $
@@ -67,63 +71,71 @@ validPrograms =
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
                 BExpr [] $
-                  Expr
-                    ( EFor
-                        (SLet (PMutIdent $ Ident "i") Nothing (litI32 0))
-                        ( Expr
-                            ( EBinop
-                                OLessThan
-                                (Expr (EIdent $ Ident "i"))
-                                (litI32 10)
-                            )
-                        )
-                        ( Expr
-                            ( EAssign
-                                (Ident "i")
-                                ( Expr
-                                    ( EBinop
-                                        OAdd
-                                        (Expr (EIdent $ Ident "i"))
-                                        (litI32 1)
-                                    )
-                                )
-                            )
-                        )
-                        (BExpr [] $ Expr (EIdent $ Ident "i"))
-                    )
+                  Just $
+                    Expr
+                      ( EFor
+                          (SLet (PMutIdent $ Ident "i") Nothing (litI32 0))
+                          ( Expr
+                              ( EBinop
+                                  OLessThan
+                                  (Expr (EIdent $ Ident "i"))
+                                  (litI32 10)
+                              )
+                          )
+                          ( Expr
+                              ( EAssign
+                                  (Ident "i")
+                                  ( Expr
+                                      ( EBinop
+                                          OAdd
+                                          (Expr (EIdent $ Ident "i"))
+                                          (litI32 1)
+                                      )
+                                  )
+                              )
+                          )
+                          (BExpr [] $ Just $ Expr (EIdent $ Ident "i"))
+                      )
             ]
         )
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
                 BExpr [] $
-                  ExprT
-                    ( EFor
-                        (SLet (PMutIdent $ Ident "i") (Just TInt32) (litI32 0))
-                        ( ExprT
-                            ( EBinop
-                                OLessThan
-                                (ExprT (EIdent $ Ident "i", TInt32))
-                                (litI32 10),
-                              TBool
-                            )
-                        )
-                        ( ExprT
-                            ( EAssign
-                                (Ident "i")
-                                ( ExprT
-                                    ( EBinop
-                                        OAdd
-                                        (ExprT (EIdent $ Ident "i", TInt32))
-                                        (litI32 1),
-                                      TInt32
-                                    )
-                                ),
-                              TInt32
-                            )
-                        )
-                        (BExpr [] $ ExprT (EIdent $ Ident "i", TInt32)),
-                      TInt32
-                    )
+                  Just $
+                    ExprT
+                      ( EFor
+                          ( SLet
+                              (PMutIdent $ Ident "i")
+                              (Just TInt32)
+                              (litI32 0)
+                          )
+                          ( ExprT
+                              ( EBinop
+                                  OLessThan
+                                  (ExprT (EIdent $ Ident "i", TInt32))
+                                  (litI32 10),
+                                TBool
+                              )
+                          )
+                          ( ExprT
+                              ( EAssign
+                                  (Ident "i")
+                                  ( ExprT
+                                      ( EBinop
+                                          OAdd
+                                          (ExprT (EIdent $ Ident "i", TInt32))
+                                          (litI32 1),
+                                        TInt32
+                                      )
+                                  ),
+                                TInt32
+                              )
+                          )
+                          ( BExpr [] $
+                              Just $ ExprT (EIdent $ Ident "i", TInt32)
+                          ),
+                        TInt32
+                      )
             ]
         )
   ]
@@ -135,11 +147,12 @@ invalidPrograms =
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $
-                  Expr $
-                    EIf
-                      litEmpty
-                      (BExpr [] litEmpty)
-                      (BExpr [] litEmpty)
+                  Just $
+                    Expr $
+                      EIf
+                        litEmpty
+                        (BExpr [] $ Just litEmpty)
+                        (BExpr [] $ Just litEmpty)
             ]
         )
         (ETypeMismatch TBool TEmpty),
@@ -148,11 +161,12 @@ invalidPrograms =
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $
-                  Expr $
-                    EIf
-                      (litBool True)
-                      (BExpr [] $ litI32 0)
-                      (BExpr [] litEmpty)
+                  Just $
+                    Expr $
+                      EIf
+                        (litBool True)
+                        (BExpr [] $ Just $ litI32 0)
+                        (BExpr [] $ Just litEmpty)
             ]
         )
         (ETypeMismatch TInt32 TEmpty),
@@ -160,7 +174,8 @@ invalidPrograms =
       assertInvalidProgram
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
-                BExpr [] $ Expr $ EWhile litEmpty $ BExpr [] litEmpty
+                BExpr [] $
+                  Just $ Expr $ EWhile litEmpty $ BExpr [] $ Just litEmpty
             ]
         )
         (ETypeMismatch TBool TEmpty),
@@ -169,12 +184,13 @@ invalidPrograms =
         ( Program
             [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $
-                  Expr $
-                    EFor
-                      (SExpr litEmpty)
-                      litEmpty
-                      litEmpty
-                      (BExpr [] litEmpty)
+                  Just $
+                    Expr $
+                      EFor
+                        (SExpr litEmpty)
+                        litEmpty
+                        litEmpty
+                        (BExpr [] $ Just litEmpty)
             ]
         )
         (ETypeMismatch TBool TEmpty)

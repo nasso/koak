@@ -53,7 +53,7 @@ type' =
     <|> TFloat64 <$ symbol "f64"
 
 block :: CharParser p => p Block
-block = BExpr [] <$> braces (expr <|> pure (Expr $ ELit LEmpty))
+block = BExpr [] <$> braces (optional expr)
 
 prio :: CharParser p => p Expr
 prio = chainl1 term binopExprPrio
