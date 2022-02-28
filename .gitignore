@@ -3,3 +3,7 @@ koak
 
 # Stack
 .stack-work/
+
+# Python
+.pytest_cache
+__pycache__
