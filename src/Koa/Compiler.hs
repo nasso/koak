@@ -55,30 +55,29 @@ genModule :: ProgramT -> AST.Module
 genModule (Program defs) =
   buildModule "__main_module" $
     traverse_
-      ( \def -> do
-          case def of
-            (DFn (Ident "main") _ _ _) -> genMainDef def
-            _ -> genDef def
+      ( \def -> case def of
+          (DFn (Ident "main") [] rety body) -> genMainDef rety body
+          (DFn (Ident "main") _ _ _) -> error "`main` must have no arguments"
+          _ -> genDef def
       )
       defs
 
-genMainDef :: MonadModuleBuilder m => DefinitionT -> m (CompilerMetaData, AST.Operand)
-genMainDef (DFn _ (_ : _) _ _) = error "incorrect number of function parameters for main"
-genMainDef (DFn (Ident "main") [] TInt32 body) =
+genMainDef :: MonadModuleBuilder m => Type -> BlockF ExprT -> m (CompilerMetaData, AST.Operand)
+genMainDef TInt32 body =
   do
     gen <- function (AST.mkName "__koa_main") [] LLVMType.i32 (genBody body)
-    return (CompilerMetaData (Just TInt32), gen)
-genMainDef (DFn (Ident "main") [] TEmpty body) =
+    pure (CompilerMetaData (Just TInt32), gen)
+genMainDef TEmpty body =
   do
     gen <- function (AST.mkName "__koa_main") [] LLVMType.void (genBody body)
-    return (CompilerMetaData (Just TEmpty), gen)
-genMainDef _ = error "`main` can only return empty or i32"
+    pure (CompilerMetaData (Just TEmpty), gen)
+genMainDef _ _ = error "`main` can only return empty or i32"
 
 genDef :: MonadModuleBuilder m => DefinitionT -> m (CompilerMetaData, AST.Operand)
 genDef (DFn (Ident name) args rety body) =
   do
     gen <- function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
-    return (CompilerMetaData Nothing, gen)
+    pure (CompilerMetaData Nothing, gen)
   where
     arg = error "unimplemented genDef.arg"
 

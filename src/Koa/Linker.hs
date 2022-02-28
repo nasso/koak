@@ -12,9 +12,8 @@ import System.Process
 
 linkFilesToExecutable :: FilePath -> [FilePath] -> IO ()
 linkFilesToExecutable out objs = withSystemTempFile "main.c" $ \p h ->
-  do
-    hPutStr h entry >> hFlush h
-    _ <- rawSystem "cc" ("-o" : out : p : objs)
-    pure ()
+  hPutStr h entry >> hFlush h
+    >> rawSystem "cc" ("-o" : out : p : objs)
+    >> pure ()
   where
     entry = $(embedStringFile "src/runtime.c") :: String

@@ -27,12 +27,9 @@ newtype App a = App {runApp :: ReaderT Args (ExceptT () IO) a}
       MonadReader Args,
       MonadError (),
       MonadMask,
-      MonadCatch
+      MonadCatch,
+      MonadThrow
     )
-
--- | Required by MonadMask and MonadCatch
-instance MonadThrow App where
-  throwM = App . throwM
 
 -- | The main entry point
 main :: IO ()
@@ -96,12 +93,13 @@ compileAllAndLink [] objs =
     out <- outputPath "a.out"
     liftIO $ linkFilesToExecutable out objs
 compileAllAndLink (p : ps) objs
-  | ".koa" `isExtensionOf` p = withSystemTempFile "koa.o" $ \out _ ->
-    do
-      tast <- checked p
-      cfg <- asks argCompilerConfig
-      liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
-      compileAllAndLink ps (out : objs)
+  | ".koa" `isExtensionOf` p =
+    withSystemTempFile "koa.o" $ \out _ ->
+      do
+        tast <- checked p
+        cfg <- asks argCompilerConfig
+        liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
+        compileAllAndLink ps (out : objs)
   | otherwise = compileAllAndLink ps (p : objs)
 
 -- | Parse a file into an AST
