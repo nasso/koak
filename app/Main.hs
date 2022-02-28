@@ -97,7 +97,7 @@ compileAllAndLink [] objs = withSystemTempFile "main.c" $ \p h ->
   do
     _ <- liftIO $ hPutStr h entry >> hFlush h
     out <- outputPath "a.out"
-    _ <- liftIO $ rawSystem "gcc" (p : objs ++ ["-o", out])
+    _ <- liftIO $ rawSystem "cc" ("-o" : out : p : objs)
     pure ()
   where
     entry = $(embedStringFile "src/entry.c") :: String
