@@ -94,10 +94,10 @@ genExpr (MIR.EBinop op left right) =
     right' <- genExpr right
     genBinop op left' right'
 -- other
-genExpr MIR.EVar {} = error "unimplemented genExpr.Ident"
+genExpr MIR.EVar {} = error "unimplemented genExpr.EVar"
 genExpr MIR.EBlock {} = error "unimplemented genExpr.EBlock"
 genExpr MIR.EIf {} = error "unimplemented genExpr.EIf"
-genExpr MIR.ELoop {} = error "unimplemented genExpr.EFor"
+genExpr MIR.ELoop {} = error "unimplemented genExpr.ELoop"
 genExpr MIR.ECall {} = error "unimplemented genExpr.ECall"
 genExpr MIR.EAssign {} = error "unimplemented genExpr.EAssign"
 

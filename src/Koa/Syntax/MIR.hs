@@ -17,7 +17,7 @@ data Definition
 data Expr
   = EVar Type Ident
   | EBlock Block
-  | EIf Expr Expr Expr
+  | EIf Expr Block Block
   | ELoop Stmt
   | ECall Ident [Expr]
   | EAssign Ident Expr
