@@ -11,6 +11,7 @@ assertExpr :: String -> Expr -> Assertion
 assertExpr src ast = parseExpr ParserConfig src @?= Right ast
 
 assertError :: String -> Assertion
-assertError src = case parseProgram ParserConfig src of
-    Left _ -> return ()
+assertError src =
+  case parseProgram ParserConfig src of
+    Left _ -> pure ()
     Right _ -> assertFailure "Expected error"
