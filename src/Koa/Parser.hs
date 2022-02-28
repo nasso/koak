@@ -66,9 +66,27 @@ term =
 expr :: CharParser p => p Expr
 expr = chainl1 prio binopExpr <|> term
 
+mutIdent :: CharParser p => p Pattern
+mutIdent = PMutIdent <$> (symbol "mut" *> ident)
+
+wildcard :: CharParser p => p Pattern
+wildcard = PWildcard <$ symbol "_"
+
+pattern :: CharParser p => p Pattern
+pattern = wildcard <|> mutIdent <|> PIdent <$> ident
+
+letType :: CharParser p => p Type
+letType = symbol ":" *> type'
+
+letStmt :: CharParser p => p Stmt
+letStmt =
+  SLet
+    <$> (symbol "let" *> pattern) <*> optional letType <*> (symbol "=" *> expr)
+
 stmt :: CharParser p => p Stmt
 stmt =
   SReturn <$> (symbol "return" *> expr <* symbol ";")
+    <|> letStmt <* symbol ";"
     <|> SExpr <$> expr <* symbol ";"
 
 binopExpr :: CharParser p => p (Expr -> Expr -> Expr)
