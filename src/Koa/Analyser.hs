@@ -6,6 +6,7 @@ module Koa.Analyser
     AnalyserWarning,
     AnalyserError,
     AnalyserResult,
+    typecheckProgram,
     analyseProgram,
   )
 where
@@ -22,11 +23,22 @@ import qualified Koa.Syntax.MIR as MIR
 
 -- | Runs the static analyser on the given program AST.
 analyseProgram :: AnalyserConfig -> HIR.Program -> AnalyserResult MIR.Program
-analyseProgram cfg ast =
+analyseProgram =
+  analyseWith checkAndTranslate
+  where
+    checkAndTranslate hir = TC.program hir >>= ToMIR.program
+
+-- | Runs the type checker on the given program AST.
+typecheckProgram :: AnalyserConfig -> HIR.Program -> AnalyserResult HIR.ProgramT
+typecheckProgram = analyseWith TC.program
+
+analyseWith ::
+  (HIR.Program -> Analyser a) ->
+  AnalyserConfig ->
+  HIR.Program ->
+  AnalyserResult a
+analyseWith p cfg ast =
   runExcept $
     runWriterT $
-      runReaderT (runAnalyser $ program ast) $
+      runReaderT (runAnalyser $ p ast) $
         AnalyserEnv {envCfg = cfg, envCtx = HM.empty, envFunType = Nothing}
-
-program :: HIR.Program -> Analyser MIR.Program
-program hir = TC.program hir >>= ToMIR.program

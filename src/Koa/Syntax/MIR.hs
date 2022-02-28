@@ -10,11 +10,8 @@ newtype Ident = Ident String deriving (Eq, Show)
 
 -- | A definition.
 data Definition
-  = DFn Ident [(Ident, Type)] Type Block
+  = DFn Ident [(Ident, Type)] Type [Stmt]
   deriving (Eq, Show)
-
--- | A list of statements, evaluating to a final expression.
-data Block = Block [Stmt] Expr deriving (Eq, Show)
 
 -- | A statement (@let@, @return@, or an expression with side-effects).
 data Stmt
@@ -44,6 +41,9 @@ data Expr
   | EUnop Unop Expr
   | EConst Constant
   deriving (Eq, Show)
+
+-- | A list of statements, evaluating to a final expression.
+data Block = Block [Stmt] Expr deriving (Eq, Show)
 
 -- | A constant value (@12@, @0.2@, @()@, etc...).
 data Constant

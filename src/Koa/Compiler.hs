@@ -66,13 +66,13 @@ genDef (MIR.DFn (MIR.Ident name) args rety body) =
   where
     arg = error "unimplemented genDef.arg"
 
-genBody :: MonadIRBuilder m => MIR.Block -> [AST.Operand] -> m ()
-genBody (MIR.Block [] expr@(MIR.EConst MIR.CEmpty)) [] =
+genBody :: MonadIRBuilder m => [MIR.Stmt] -> [AST.Operand] -> m ()
+genBody [MIR.SReturn expr@(MIR.EConst MIR.CEmpty)] [] =
   do
     _ <- block `named` "entry"
     _ <- genExpr expr
     retVoid
-genBody (MIR.Block [] expr) [] =
+genBody [MIR.SReturn expr] [] =
   do
     _ <- block `named` "entry"
     res <- genExpr expr
