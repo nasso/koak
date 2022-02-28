@@ -72,8 +72,8 @@ mutIdent = PMutIdent <$> (symbol "mut" *> ident)
 wildcard :: CharParser p => p Pattern
 wildcard = PWildcard <$ symbol "_"
 
-pattern :: CharParser p => p Pattern
-pattern = wildcard <|> mutIdent <|> PIdent <$> ident
+pattern' :: CharParser p => p Pattern
+pattern' = wildcard <|> mutIdent <|> PIdent <$> ident
 
 letType :: CharParser p => p Type
 letType = symbol ":" *> type'
@@ -81,7 +81,7 @@ letType = symbol ":" *> type'
 letStmt :: CharParser p => p Stmt
 letStmt =
   SLet
-    <$> (symbol "let" *> pattern) <*> optional letType <*> (symbol "=" *> expr)
+    <$> (symbol "let" *> pattern') <*> optional letType <*> (symbol "=" *> expr)
 
 stmt :: CharParser p => p Stmt
 stmt =
