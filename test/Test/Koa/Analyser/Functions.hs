@@ -16,6 +16,18 @@ functionsTests =
 validPrograms :: [TestTree]
 validPrograms =
   [ testCase "empty body" $ assertValidProgram (Program []) (Program []),
+    testCase "missing final expression" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "main") [] TEmpty $
+                BExpr [] Nothing
+            ]
+        )
+        ( Program
+            [ DFn (Ident "main") [] TEmpty $
+                BExpr [] Nothing
+            ]
+        ),
     testCase "function returning empty" $
       assertValidProgram
         ( Program
@@ -232,6 +244,22 @@ validPrograms =
                         TInt32
                       )
             ]
+        ),
+    testCase "return statement" $
+      assertValidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr
+                  [SReturn $ litI32 0]
+                  Nothing
+            ]
+        )
+        ( Program
+            [ DFn (Ident "foo") [] TInt32 $
+                BExpr
+                  [SReturn $ litI32 0]
+                  Nothing
+            ]
         )
   ]
 
@@ -315,5 +343,15 @@ invalidPrograms =
                   $ Just litEmpty
             ]
         )
-        (EMutationOfImmutable $ Ident "a")
+        (EMutationOfImmutable $ Ident "a"),
+    testCase "return statement with wrong type" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TEmpty $
+                BExpr
+                  [SReturn $ litI32 0]
+                  Nothing
+            ]
+        )
+        (ETypeMismatch TEmpty TInt32)
   ]
