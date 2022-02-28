@@ -13,19 +13,6 @@ data Definition
   = DFn Ident [(Ident, Type)] Type Block
   deriving (Eq, Show)
 
--- | MIR for an expression.
-data Expr
-  = EVar Type Ident
-  | EBlock Block
-  | EIf Expr Block Block
-  | ELoop Stmt
-  | ECall Ident [Expr]
-  | EAssign Ident Expr
-  | EBinop Binop Expr Expr
-  | EUnop Unop Expr
-  | EConst Constant
-  deriving (Eq, Show)
-
 -- | A list of statements, evaluating to a final expression.
 data Block = Block [Stmt] Expr deriving (Eq, Show)
 
@@ -43,6 +30,19 @@ data Pattern
   = PWildcard
   | PIdent Ident
   | PMutIdent Ident
+  deriving (Eq, Show)
+
+-- | MIR for an expression.
+data Expr
+  = EVar Type Ident
+  | EBlock Block
+  | EIf Expr Block Block
+  | ELoop Block
+  | ECall Ident [Expr]
+  | EAssign Ident Expr
+  | EBinop Binop Expr Expr
+  | EUnop Unop Expr
+  | EConst Constant
   deriving (Eq, Show)
 
 -- | A constant value (@12@, @0.2@, @()@, etc...).
