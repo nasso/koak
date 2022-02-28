@@ -115,11 +115,18 @@ valid =
                     Nothing
                 )
             ]
-        ),
-    testCase "mutable wildcard" $
+        )
+  ]
+
+invalid :: [TestTree]
+invalid =
+  [ testCase "mutable wildcard" $
       assertError
         "fn f(): () { let mut _ = 1; }"
   ]
 
 letTests :: [TestTree]
-letTests = [testGroup "Valid" valid]
+letTests =
+  [ testGroup "Valid" valid,
+    testGroup "Invalid" invalid
+  ]
