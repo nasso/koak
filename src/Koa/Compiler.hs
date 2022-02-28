@@ -46,18 +46,26 @@ emit NativeObject path modir =
       )
 
 genModule :: ProgramT -> AST.Module
-genModule (Program defs) = buildModule "__main_module" $ traverse_ genDef defs
+genModule (Program defs) =
+  buildModule "__main_module" $
+    traverse_
+      ( \def -> do
+          case def of
+            (DFn (Ident "main") _ _ _) -> genMainDef def
+            _ -> genDef def
+      )
+      defs
+
+genMainDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
+genMainDef (DFn _ (_ : _) _ _) = error "incorrect number of function parameters for main"
+genMainDef (DFn (Ident "main") [] TInt32 body) =
+  function (AST.mkName "__koa_main") [] LLVMType.i32 $ genBody body
+genMainDef (DFn (Ident "main") [] TEmpty body) =
+  function (AST.mkName "__koa_main") [] LLVMType.i32 $ \ops ->
+    genBody body ops <* ret (int32 0)
+genMainDef _ = error "`main` can only return empty or i32"
 
 genDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
-genDef (DFn (Ident "main") args TInt32 body) =
-  function (AST.mkName "__koa_main") (arg <$> args) LLVMType.i32 $ genBody body
-  where
-    arg = error "unimplemented genDef.arg"
-genDef (DFn (Ident "main") args TEmpty body) =
-  function (AST.mkName "__koa_main") (arg <$> args) LLVMType.i32 $ \ops ->
-    genBody body ops <* ret (int32 0)
-  where
-    arg = error "unimplemented genDef.arg"
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
   where
