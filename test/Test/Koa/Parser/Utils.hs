@@ -1,4 +1,4 @@
-module Test.Koa.Parser.Utils (assertProgram, assertExpr) where
+module Test.Koa.Parser.Utils (assertProgram, assertExpr, assertError) where
 
 import Koa.Parser
 import Koa.Syntax
@@ -9,3 +9,8 @@ assertProgram src ast = parseProgram ParserConfig src @?= Right ast
 
 assertExpr :: String -> Expr -> Assertion
 assertExpr src ast = parseExpr ParserConfig src @?= Right ast
+
+assertError :: String -> Assertion
+assertError src = case parseProgram ParserConfig src of
+    Left _ -> return ()
+    Right _ -> assertFailure "Expected error"

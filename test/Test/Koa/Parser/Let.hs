@@ -115,7 +115,10 @@ valid =
                     Nothing
                 )
             ]
-        )
+        ),
+    testCase "mutable wildcard" $
+      assertError
+        "fn f(): () { let mut _ = 1; }"
   ]
 
 letTests :: [TestTree]
