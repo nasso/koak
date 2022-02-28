@@ -5,6 +5,7 @@ import tempfile
 from unittest import TestCase
 import subprocess
 
+
 def run_test(source : str, expected_exit_code : int, expected_stdout : str, expected_stderr : str) -> None:
     tmp_path = tempfile.mktemp()
     source_path = tmp_path + "_source.koa"
@@ -27,6 +28,7 @@ def run_test(source : str, expected_exit_code : int, expected_stdout : str, expe
     os.unlink(source_path)
     os.unlink(binary_path)
 
+
 class Return(TestCase):
     def test_return_void(self):
         run_test(
@@ -35,6 +37,7 @@ class Return(TestCase):
                 ()
             }'''
             , 0, '', '')
+
 
     def test_return_0_as_i32(self):
         run_test(
