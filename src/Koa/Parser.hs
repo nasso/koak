@@ -135,9 +135,15 @@ floating =
     pure $ read $ n ++ f
 
 ident :: CharParser p => p Ident
-ident = lexeme $ Ident <$> ((:) <$> initial <*> many subseq) <?> "identifier"
+ident =
+  lexeme $
+    Ident
+      <$> ( ((:) <$> initial <*> many subseq)
+              <|> ((:) <$> like '_' <*> many1 alphanum)
+          )
+      <?> "identifier"
   where
-    initial = alpha <|> like '_'
+    initial = alpha
     subseq = alphanum <|> like '_'
 
 alpha :: CharParser p => p Char
