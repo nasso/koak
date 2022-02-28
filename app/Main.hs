@@ -100,7 +100,7 @@ compileAllAndLink [] objs = withSystemTempFile "main.c" $ \p h ->
     _ <- liftIO $ rawSystem "cc" ("-o" : out : p : objs)
     pure ()
   where
-    entry = $(embedStringFile "src/entry.c") :: String
+    entry = $(embedStringFile "src/runtime.c") :: String
 compileAllAndLink (p : ps) objs
   | ".koa" `isExtensionOf` p = withSystemTempFile "koa.o" $ \out _ ->
     do
