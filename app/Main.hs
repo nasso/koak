@@ -101,14 +101,14 @@ compileAllAndLink [] objs = withSystemTempFile "main.c" $ \p h ->
     pure ()
   where
     entry = $(embedStringFile "src/entry.c") :: String
-compileAllAndLink (p : ps) objs = case ".koa" `isExtensionOf` p of
-  False -> compileAllAndLink ps (p : objs)
-  True -> withSystemTempFile "koa.o" $ \out _ ->
+compileAllAndLink (p : ps) objs
+  | ".koa" `isExtensionOf` p = withSystemTempFile "koa.o" $ \out _ ->
     do
       tast <- checked p
       cfg <- asks argCompilerConfig
       liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
       compileAllAndLink ps (out : objs)
+  | otherwise = compileAllAndLink ps (p : objs)
 
 -- | Parse a file into an AST
 parsed :: FilePath -> App Program
