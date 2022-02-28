@@ -27,6 +27,12 @@ newtype CompilerConfig = CompilerConfig
 -- | Output format for the compiled program.
 data OutputFormat = Assembly | NativeObject deriving (Show, Eq)
 
+-- | Meta-data for a compiled program.
+newtype CompilerMetaData = CompilerMetaData
+  { mdMainReturnType :: Maybe Type
+  }
+  deriving (Show, Eq)
+
 -- | Compile a program.
 compileProgramToFile :: FilePath -> CompilerConfig -> ProgramT -> IO ()
 compileProgramToFile path cfg ast =
@@ -56,18 +62,23 @@ genModule (Program defs) =
       )
       defs
 
-genMainDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
+genMainDef :: MonadModuleBuilder m => DefinitionT -> m (CompilerMetaData, AST.Operand)
 genMainDef (DFn _ (_ : _) _ _) = error "incorrect number of function parameters for main"
 genMainDef (DFn (Ident "main") [] TInt32 body) =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $ genBody body
+  do
+    gen <- function (AST.mkName "__koa_main") [] LLVMType.i32 (genBody body)
+    return (CompilerMetaData (Just TInt32), gen)
 genMainDef (DFn (Ident "main") [] TEmpty body) =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $ \ops ->
-    genBody body ops <* ret (int32 0)
+  do
+    gen <- function (AST.mkName "__koa_main") [] LLVMType.void (genBody body)
+    return (CompilerMetaData (Just TEmpty), gen)
 genMainDef _ = error "`main` can only return empty or i32"
 
-genDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
+genDef :: MonadModuleBuilder m => DefinitionT -> m (CompilerMetaData, AST.Operand)
 genDef (DFn (Ident name) args rety body) =
-  function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
+  do
+    gen <- function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
+    return (CompilerMetaData Nothing, gen)
   where
     arg = error "unimplemented genDef.arg"
 
