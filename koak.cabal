@@ -27,6 +27,7 @@ library
   exposed-modules:
       Koa.Analyser
       Koa.Compiler
+      Koa.Linker
       Koa.Parser
       Koa.Syntax
       Lib
