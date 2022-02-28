@@ -75,7 +75,8 @@ data SymbolBinding
 -- | The read-only environment in which the analyser runs.
 data AnalyserEnv = AnalyserEnv
   { envCfg :: AnalyserConfig,
-    envCtx :: HashMap String SymbolBinding
+    envCtx :: HashMap String SymbolBinding,
+    envFunType :: Maybe Type
   }
   deriving (Show, Eq)
 
@@ -105,7 +106,7 @@ analyseProgram cfg ast =
   runExcept $
     runWriterT $
       runReaderT (runAnalyser $ program ast) $
-        AnalyserEnv {envCfg = cfg, envCtx = HM.empty}
+        AnalyserEnv {envCfg = cfg, envCtx = HM.empty, envFunType = Nothing}
 
 -- | Analyse a program.
 program :: Program -> Analyser ProgramT
@@ -124,7 +125,8 @@ withDef (DFn (Ident name) args rety _) = local insertDef
 -- | Analyse a definition.
 definition :: Definition -> Analyser DefinitionT
 definition (DFn name args rety body) =
-  DFn name args rety <$> withBindings args (checkBlock rety body)
+  local (\e -> e {envFunType = Just rety}) $
+    DFn name args rety <$> withBindings args (checkBlock rety body)
 
 -- | Run a computation with a set of bindings.
 withBindings :: [TBinding] -> Analyser a -> Analyser a
@@ -139,6 +141,7 @@ withBindings bindings =
 
 -- | Analyse a block, verifying that it evaluates to the expected type.
 checkBlock :: Type -> Block -> Analyser BlockT
+checkBlock _ b@(BExpr _ Nothing) = block b
 checkBlock expectedTy b =
   do
     block' <- block b
@@ -155,7 +158,7 @@ block :: Block -> Analyser BlockT
 block (BExpr stmts (Just e)) =
   withStatements stmts $ \stmts' -> BExpr stmts' . Just <$> expression e
 block (BExpr stmts Nothing) =
-  block $ BExpr stmts (Just $ Expr $ ELit LEmpty)
+  withStatements stmts $ \stmts' -> pure $ BExpr stmts' Nothing
 
 -- | Analyse a series of statements and run a computation in the modified scope.
 withStatements :: [Stmt] -> ([StmtT] -> Analyser a) -> Analyser a
@@ -173,9 +176,14 @@ withStatement s@(SLet pat explicitTy e) k =
     e'@(ExprT (_, exprTy)) <- expression e
     case explicitTy of
       Just ty | ty /= exprTy -> throwError (ETypeMismatch ty exprTy, LStmt s)
-      _ -> pure ()
-    local (bind pat e') $ k $ SLet pat (Just exprTy) e'
-withStatement _ _ = error "not implemented: withStatement"
+      _ -> local (bind pat e') $ k $ SLet pat (Just exprTy) e'
+withStatement s@(SReturn e) k =
+  do
+    e'@(ExprT (_, ty)) <- expression e
+    retTy <- asks envFunType
+    case retTy of
+      Just ty' | ty /= ty' -> throwError (ETypeMismatch ty' ty, LStmt s)
+      _ -> k $ SReturn e'
 
 bind :: Pattern -> ExprT -> AnalyserEnv -> AnalyserEnv
 bind (PIdent (Ident varname)) (ExprT (_, ty)) env =
