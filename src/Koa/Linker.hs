@@ -12,7 +12,8 @@ import System.Process
 
 linkFilesToExecutable :: FilePath -> [FilePath] -> IO ()
 linkFilesToExecutable out objs = withSystemTempFile "main.c" $ \p h ->
-  hPutStr h entry >> hFlush h
+  hPutStr h entry
+    >> hFlush h
     >> rawSystem "cc" ("-o" : out : p : objs)
     >> pure ()
   where
