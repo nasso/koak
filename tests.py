@@ -3,6 +3,12 @@
 import os
 import subprocess
 
+# Type hinting tuple for all python3 versions
+import sys
+if sys.version_info < (3, 9):
+    from typing import Tuple as tuple
+
+
 TEST_SOURCE_DIR = 'tests'
 
 INDENT = '    '
@@ -15,7 +21,26 @@ OK = COLOR_GREEN + '[OK]' + COLOR_RESET
 KO = COLOR_RED + '[KO]' + COLOR_RESET
 
 
-def test_run(dir: str, files: list):
+def build_project() -> None:
+    '''
+    Build the project to avoid waiting for compilation during the tests
+    '''
+    print('Build koak...')
+    subprocess.call(['stack', 'build'], stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+    print('Build done\n')
+
+
+def test_run(dir: str, files: list) -> tuple[int, int]:
+    '''
+    For each files like '*.koa' in the given directory, run the test
+    Then, check if exit code is the same as the expected one located '*.code' or equal to 0 if no file is found
+    Check if the output is the same as the expected output located in '*.out' or equal to '' if no file is found
+    Same for the error output with '*.err' files
+
+    One '*.koa' file is one test
+    Return the number of success and failure tests as tuple
+    '''
     success_count = 0
     failure_count = 0
 
@@ -92,32 +117,46 @@ def test_run(dir: str, files: list):
     return success_count, failure_count
 
 
+def clean() -> None:
+    '''
+    Delete all generated files
+    '''
+    os.system('find ' + TEST_SOURCE_DIR + ' -name "*.bin" -type f -delete')
+
+
+def resume(success_count: int, failure_count: int) -> None:
+    '''
+    Print the resume of the test
+    Exit with 1 if there is at least one failure, 0 otherwise
+    '''
+    print('\n')
+
+    if failure_count == 0:
+        print(COLOR_GREEN + str(success_count) + ' tests passed' + COLOR_RESET)
+        exit(0)
+
+    print(COLOR_RED + str(failure_count) + ' tests failed out of ' +
+          str(success_count + failure_count) + COLOR_RESET)
+    exit(1)
+
+
 if __name__ == '__main__':
 
     # build the project
-    print('Build koak...')
-    subprocess.call(['stack', 'build'], stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
+    build_project()
 
-    total_success = 0
-    total_failure = 0
+    # initialize counters
+    success_count = 0
+    failure_count = 0
 
     # iterate on the tests directory
     for (dir, _, files) in os.walk(TEST_SOURCE_DIR):
-        success_count, failure_count = test_run(dir, files)
-        total_success += success_count
-        total_failure += failure_count
+        success_count_, failure_count_ = test_run(dir, files)
+        success_count += success_count_
+        failure_count += failure_count_
 
     # clean generated files
-    os.system('find ' + TEST_SOURCE_DIR + ' -name "*.bin" -type f -delete')
+    clean()
 
     # resume
-    print()
-    print()
-    if total_failure == 0:
-        print(COLOR_GREEN + str(total_success) + ' tests passed' + COLOR_RESET)
-        exit(0)
-
-    print(COLOR_RED + str(total_failure) + ' tests failed out of ' +
-          str(total_success + total_failure) + COLOR_RESET)
-    exit(1)
+    resume(success_count, failure_count)
