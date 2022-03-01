@@ -2,8 +2,8 @@ int __koa_main(void);
 
 int main(void)
 {
-    int ret;
+    int exit_code;
 
-    ret = __koa_main();
-    return ret;
+    exit_code = __koa_main();
+    return exit_code;
 }
