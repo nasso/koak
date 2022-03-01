@@ -2,11 +2,11 @@
 
 import os
 import subprocess
-from sys import version_info, platform
+from sys import version_info, platform, argv
 
-# Type hinting tuple for all python3 versions
+# Type hinting tuple and list for all python3 versions
 if version_info < (3, 9):
-    from typing import Tuple as tuple
+    from typing import Tuple as tuple, List as list
 
 TEST_SOURCE_DIR = 'tests'
 INDENT = '    '
@@ -49,8 +49,14 @@ def run_test(source_path: str, indent: int) -> bool:
 
     try:
         # compile the source
-        subprocess.call(['stack', 'run', '--', '-o', binary_path,
-                        source_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.Popen(['stack', 'run', '--', '-o', binary_path,
+                                   source_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _, p_stderr = process.communicate()
+
+        # check if no compilation error occurred
+        if process.returncode != 0:
+            p_stderr = p_stderr.decode('utf-8').strip()
+            raise Exception('Error: compilation failed\n' + p_stderr)
 
         # execute the binary
         process = subprocess.Popen(
@@ -70,8 +76,7 @@ def run_test(source_path: str, indent: int) -> bool:
 
         # check exit code
         if got_exit_code != exp_exit_code:
-            err = (indent + 1) * INDENT + f'Got exit code: {got_exit_code}\n'
-            err += (indent + 1) * INDENT + f'But expected: {exp_exit_code}'
+            err = f'Got exit code: {got_exit_code}\nBut expected: {exp_exit_code}'
             raise Exception(err)
 
         # retrieve expected output
@@ -82,8 +87,7 @@ def run_test(source_path: str, indent: int) -> bool:
 
         # check stdout
         if got_stdout != exp_stdout:
-            err = (indent + 1) * INDENT + f'Got stdout: {got_stdout}\n'
-            err += (indent + 1) * INDENT + f'But expected: {exp_stdout}'
+            err = f'Got stdout: {got_stdout}\nBut expected: {exp_stdout}'
             raise Exception(err)
 
         # retrieve expected error output
@@ -94,18 +98,19 @@ def run_test(source_path: str, indent: int) -> bool:
 
         # check stderr
         if got_stderr != exp_stderr:
-            err = (indent + 1) * INDENT + f'Got stderr: {got_stderr}\n'
-            err += (indent + 1) * INDENT + f'But expected: {exp_stderr}'
+            err = f'Got stderr: {got_stderr}\nBut expected: {exp_stderr}'
             raise Exception(err)
 
         # all tests are passed
-        print(indent * INDENT + '[OK] ' + source_path)
+        print(indent * INDENT + '[OK] ' + source_path.split('/')[-1])
         has_succeeded = True
 
     except Exception as e:
         # if an error occurred, then the test has failed
+        print('>' * 80)
         print(indent * INDENT + '[KO] ' + source_path)
         print(e)
+        print('<' * 80)
         has_succeeded = False
 
     # delete the binary
@@ -116,7 +121,7 @@ def run_test(source_path: str, indent: int) -> bool:
     return has_succeeded
 
 
-def run_tests(dir: str, files: list) -> tuple[int, int]:
+def run_tests(dir: str, files: list[str], indent: int) -> tuple[int, int]:
     '''
     For each files like '*.koa' in the given directory, call run_test()
 
@@ -127,7 +132,6 @@ def run_tests(dir: str, files: list) -> tuple[int, int]:
     failure_count = 0
 
     name = os.path.basename(dir)
-    indent = dir.count('/')
 
     # print test suite name
     print(indent * INDENT + name + ':')
@@ -160,8 +164,7 @@ def print_summary(success_count: int, failure_count: int) -> None:
     exit(1)
 
 
-if __name__ == '__main__':
-
+def main(test_paths: list[str]) -> None:
     # build the project
     build_project()
 
@@ -169,11 +172,30 @@ if __name__ == '__main__':
     success_count = 0
     failure_count = 0
 
-    # iterate on the tests directory
-    for (dir, _, files) in os.walk(TEST_SOURCE_DIR):
-        success_count_, failure_count_ = run_tests(dir, files)
-        success_count += success_count_
-        failure_count += failure_count_
+    # iterate on each test path
+    for test_path in test_paths:
+        # remove trailing '/'
+        test_path = test_path.rstrip('/')
+        # iterate on each subdirectory
+        for (dir, _, files) in os.walk(test_path):
+            indent = dir[len(test_path):].count('/')
+            success_count_, failure_count_ = run_tests(dir, files, indent)
+            success_count += success_count_
+            failure_count += failure_count_
 
     # print summary
     print_summary(success_count, failure_count)
+
+
+if __name__ == '__main__':
+    if '-h' in argv or '--help' in argv:
+        print(f'Usage: python3 {argv[0]} [TEST_PATH]')
+
+    # get test paths
+    if len(argv) > 1:
+        test_paths = argv[1:]
+    else:
+        test_paths = [TEST_SOURCE_DIR]
+
+    # run tests
+    main(test_paths)
