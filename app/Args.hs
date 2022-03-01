@@ -46,8 +46,12 @@ data Stage
     Parse FilePath
   | -- | Parser + type checker
     Check FilePath
+  | -- | Parser + type checker + IR codegen
+    Codegen FilePath
   | -- | Parser + type checker + compiler
     Compile FilePath
+  | -- | Parser + type checker + compiler + linker
+    Link [FilePath]
   deriving (Eq, Show)
 
 parseArgs :: IO Args
@@ -88,7 +92,7 @@ quietFlag =
 
 -- | Stage flags parser
 stage :: Parser Stage
-stage = parseFlag <|> checkFlag <|> compileFlag
+stage = parseFlag <|> checkFlag <|> codegenFlag <|> compileFlag <|> linkArgs
 
 -- | "Parse" flag parser
 parseFlag :: Parser Stage
@@ -112,6 +116,17 @@ checkFlag =
           <> short 't'
       )
 
+-- | "Codegen" flag parser
+codegenFlag :: Parser Stage
+codegenFlag =
+  Codegen
+    <$> strOption
+      ( help "Generate IR code for the given file"
+          <> metavar "FILE"
+          <> long "codegen"
+          <> short 'S'
+      )
+
 -- | "Compile" flag parser
 compileFlag :: Parser Stage
 compileFlag =
@@ -121,6 +136,16 @@ compileFlag =
           <> metavar "FILE"
           <> long "compile"
           <> short 'c'
+      )
+
+-- | "Link" flag parser
+linkArgs :: Parser Stage
+linkArgs =
+  Link
+    <$> many
+      ( strArgument $
+          help "Link the input files"
+            <> metavar "FILES..."
       )
 
 -- | Output file argument parser
@@ -142,14 +167,4 @@ analyserCfg = pure $ AnalyserConfig False
 
 -- | Compiler configuration parser
 compilerCfg :: Parser CompilerConfig
-compilerCfg = CompilerConfig <$> outputFormatCfg
-
--- | Output format configuration parser
-outputFormatCfg :: Parser OutputFormat
-outputFormatCfg =
-  flag
-    NativeObject
-    Assembly
-    ( help "Compile only; do not assemble or link."
-        <> short 'S'
-    )
+compilerCfg = pure $ CompilerConfig NativeObject

@@ -3,17 +3,20 @@
 module Main (main) where
 
 import Args
+import Control.Monad.Catch
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Foldable
 import Data.Maybe
 import Koa.Analyser
 import Koa.Compiler
+import Koa.Linker
 import Koa.Parser
 import Koa.Syntax
 import System.Exit
 import System.FilePath
 import System.IO
+import System.IO.Temp
 
 newtype App a = App {runApp :: ReaderT Args (ExceptT () IO) a}
   deriving
@@ -22,7 +25,10 @@ newtype App a = App {runApp :: ReaderT Args (ExceptT () IO) a}
       Monad,
       MonadIO,
       MonadReader Args,
-      MonadError ()
+      MonadError (),
+      MonadMask,
+      MonadCatch,
+      MonadThrow
     )
 
 -- | The main entry point
@@ -44,6 +50,8 @@ app =
       Parse p -> parse p
       Check p -> check p
       Compile p -> compile p
+      Codegen p -> codegen p
+      Link p -> link p
 
 -- | Parse a program and write the AST to the output file
 parse :: FilePath -> App ()
@@ -53,6 +61,16 @@ parse p = parsed p >>= outputStr (p -<.> "txt") . show
 check :: FilePath -> App ()
 check p = checked p >>= outputStr (p -<.> "txt") . show
 
+-- | Parse, type-check and IR codegen a program and write the IR to the output
+-- file
+codegen :: FilePath -> App ()
+codegen p =
+  do
+    tast <- checked p
+    cfg <- asks argCompilerConfig
+    out <- outputPath (p -<.> "ll")
+    liftIO $ compileProgramToFile out (cfg {cfgFormat = Assembly}) tast
+
 -- | Parse, type-check and compile a program and write the compiled binary to
 -- the output file
 compile :: FilePath -> App ()
@@ -60,13 +78,29 @@ compile p =
   do
     tast <- checked p
     cfg <- asks argCompilerConfig
-    out <-
-      outputPath
-        ( p -<.> case cfgFormat cfg of
-            Assembly -> "ll"
-            NativeObject -> "o"
-        )
-    liftIO $ compileProgramToFile out cfg tast
+    out <- outputPath (p -<.> "o")
+    liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
+
+-- | Compile all input files if necessary and link them into an executable
+link :: [FilePath] -> App ()
+link ps = compileAllAndLink ps []
+
+-- | Parse, type-check and compile all input files in temporary files if
+-- necessary and link them into an executable
+compileAllAndLink :: [FilePath] -> [FilePath] -> App ()
+compileAllAndLink [] objs =
+  do
+    out <- outputPath "a.out"
+    liftIO $ linkFilesToExecutable out objs
+compileAllAndLink (p : ps) objs
+  | ".koa" `isExtensionOf` p =
+    withSystemTempFile "koa.o" $ \out _ ->
+      do
+        tast <- checked p
+        cfg <- asks argCompilerConfig
+        liftIO $ compileProgramToFile out (cfg {cfgFormat = NativeObject}) tast
+        compileAllAndLink ps (out : objs)
+  | otherwise = compileAllAndLink ps (p : objs)
 
 -- | Parse a file into an AST
 parsed :: FilePath -> App Program
