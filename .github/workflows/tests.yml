@@ -53,3 +53,4 @@ jobs:
           set -ex
           stack upgrade || curl -sSL https://get.haskellstack.org/ | sh -s - -f
           stack test --fast --no-terminal
+          python3 tests.py
