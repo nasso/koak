@@ -47,24 +47,18 @@ emit NativeObject path modir =
 
 genModule :: ProgramT -> AST.Module
 genModule (Program defs) =
-  buildModule "__main_module" $
-    traverse_
-      ( \def -> case def of
-          (DFn (Ident "main") [] rety body) -> genMainDef rety body
-          (DFn (Ident "main") _ _ _) -> error "`main` must have no arguments"
-          _ -> genDef def
-      )
-      defs
-
-genMainDef :: MonadModuleBuilder m => Type -> BlockF ExprT -> m AST.Operand
-genMainDef TInt32 body =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $ genBody body
-genMainDef TEmpty body =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $ \ops ->
-    genBody body ops <* ret (int32 0)
-genMainDef _ _ = error "`main` can only return empty or i32"
+  buildModule "__main_module" $ traverse_ genDef defs
 
 genDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
+-- main special case
+genDef (DFn (Ident "main") [] TInt32 body) =
+  function (AST.mkName "__koa_main") [] LLVMType.i32 $ genBody body
+genDef (DFn (Ident "main") [] TEmpty body) =
+  function (AST.mkName "__koa_main") [] LLVMType.i32 $ \ops ->
+    genBody body ops <* ret (int32 0)
+genDef (DFn (Ident "main") [] _ _) = error "`main` can only return empty or i32"
+genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
+-- normal functions
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
   where
