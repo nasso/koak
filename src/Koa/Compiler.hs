@@ -27,12 +27,6 @@ newtype CompilerConfig = CompilerConfig
 -- | Output format for the compiled program.
 data OutputFormat = Assembly | NativeObject deriving (Show, Eq)
 
--- | Meta-data for a compiled program.
-newtype CompilerMetaData = CompilerMetaData
-  { mdMainReturnType :: Maybe Type
-  }
-  deriving (Show, Eq)
-
 -- | Compile a program.
 compileProgramToFile :: FilePath -> CompilerConfig -> ProgramT -> IO ()
 compileProgramToFile path cfg ast =
@@ -62,22 +56,17 @@ genModule (Program defs) =
       )
       defs
 
-genMainDef :: MonadModuleBuilder m => Type -> BlockF ExprT -> m (CompilerMetaData, AST.Operand)
+genMainDef :: MonadModuleBuilder m => Type -> BlockF ExprT -> m AST.Operand
 genMainDef TInt32 body =
-  do
-    gen <- function (AST.mkName "__koa_main") [] LLVMType.i32 (genBody body)
-    pure (CompilerMetaData (Just TInt32), gen)
+  function (AST.mkName "__koa_main") [] LLVMType.i32 $ genBody body
 genMainDef TEmpty body =
-  do
-    gen <- function (AST.mkName "__koa_main") [] LLVMType.void (genBody body)
-    pure (CompilerMetaData (Just TEmpty), gen)
+  function (AST.mkName "__koa_main") [] LLVMType.i32 $ \ops ->
+    genBody body ops <* ret (int32 0)
 genMainDef _ _ = error "`main` can only return empty or i32"
 
-genDef :: MonadModuleBuilder m => DefinitionT -> m (CompilerMetaData, AST.Operand)
+genDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
 genDef (DFn (Ident name) args rety body) =
-  do
-    gen <- function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
-    pure (CompilerMetaData Nothing, gen)
+  function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
   where
     arg = error "unimplemented genDef.arg"
 
