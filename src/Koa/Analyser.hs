@@ -142,7 +142,9 @@ funBody b@(BExpr _ le) rety =
 
 -- | Figure out if a block unconditionally returns.
 blockUnconditionnallyReturns :: Block -> Bool
-blockUnconditionnallyReturns (BExpr stmts _) =
+blockUnconditionnallyReturns (BExpr stmts (Just e)) =
+  any stmtUnconditionnallyReturns stmts || exprUnconditionnallyReturns e
+blockUnconditionnallyReturns (BExpr stmts Nothing) =
   any stmtUnconditionnallyReturns stmts
 
 -- | Figure out if a statement unconditionally returns.
