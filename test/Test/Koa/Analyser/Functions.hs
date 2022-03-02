@@ -245,7 +245,7 @@ validPrograms =
                       )
             ]
         ),
-    testCase "return statement" $
+    testCase "return statement with no last expression" $
       assertValidProgram
         ( Program
             [ DFn (Ident "foo") [] TInt32 $
@@ -273,6 +273,14 @@ invalidPrograms =
             ]
         )
         (ETypeMismatch TEmpty TInt32),
+    testCase "empty body when return type isn't ()" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "main") [] TInt32 $
+                BExpr [] Nothing
+            ]
+        )
+        (ETypeMismatch TInt32 TEmpty),
     testCase "call undefined function" $
       assertInvalidProgram
         ( Program
@@ -318,7 +326,7 @@ invalidPrograms =
             ]
         )
         EInvalidArguments,
-    testCase "funciton call with arguments of the wrong type" $
+    testCase "function call with arguments of the wrong type" $
       assertInvalidProgram
         ( Program
             [ DFn
