@@ -5,7 +5,7 @@ import os
 import subprocess
 from sys import version_info, platform, argv
 from time import time
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 
 # Type hinting tuple and list for all python3 versions
 if version_info < (3, 9):
@@ -193,8 +193,8 @@ def arg_check_positive(value):
 if __name__ == '__main__':
     # parse arguments
     parser = argparse.ArgumentParser(description='Run integration tests')
-    parser.add_argument('-j', '--jobs', type=arg_check_positive, default=1,
-                        help='run N tests in parallel (default: 1)')
+    parser.add_argument('-j', '--jobs', type=arg_check_positive, default=cpu_count(),
+                        help='run N tests in parallel (default: number of CPU cores)')
     parser.add_argument('TEST_PATH', nargs='*', default=[TEST_SOURCE_DIR],
                         help=f'path to the test directory (default: {TEST_SOURCE_DIR})')
     args = parser.parse_args()
