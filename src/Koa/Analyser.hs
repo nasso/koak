@@ -117,7 +117,8 @@ withAllDefs :: [Definition] -> Analyser a -> Analyser a
 withAllDefs ds a = foldr withDef a ds
 
 withDef :: Definition -> Analyser a -> Analyser a
-withDef (DFn (Ident name) args rety _) = local insertDef
+withDef (DFn (Ident name) args rety _) =
+  local insertDef
   where
     argtys = (\(TBinding _ ty) -> ty) <$> args
     insertDef e = e {envCtx = HM.insert name (STFun argtys rety) $ envCtx e}
@@ -125,8 +126,15 @@ withDef (DFn (Ident name) args rety _) = local insertDef
 -- | Analyse a definition.
 definition :: Definition -> Analyser DefinitionT
 definition (DFn name args rety body) =
+  DFn name args rety <$> withBindings args (funBody body rety)
+
+-- | Analyse a block, verifying that it evaluates to the expected type.
+funBody :: Block -> Type -> Analyser BlockT
+funBody b@(BExpr _ le) rety =
   local (\e -> e {envFunType = Just rety}) $
-    DFn name args rety <$> withBindings args (checkBlock rety body)
+    case le of
+      Nothing -> block b
+      _ -> blockWithType b rety
 
 -- | Run a computation with a set of bindings.
 withBindings :: [TBinding] -> Analyser a -> Analyser a
@@ -138,20 +146,6 @@ withBindings bindings =
     binding (TBinding (PIdent (Ident n)) ty) = Just (n, STVar Immutable ty)
     binding (TBinding (PMutIdent (Ident n)) ty) = Just (n, STVar Mutable ty)
     binding (TBinding PWildcard _) = Nothing
-
--- | Analyse a block, verifying that it evaluates to the expected type.
-checkBlock :: Type -> Block -> Analyser BlockT
-checkBlock _ b@(BExpr _ Nothing) = block b
-checkBlock expectedTy b =
-  do
-    block' <- block b
-    let actualTy = blockType block'
-    when (actualTy /= expectedTy) $
-      throwError
-        ( ETypeMismatch {eExpected = expectedTy, eActual = actualTy},
-          LBlock b
-        )
-    pure block'
 
 -- | Analyse a block.
 block :: Block -> Analyser BlockT
@@ -215,21 +209,20 @@ expression e@(Expr (EUnop op val)) =
     case unopOutput op valTy of
       Nothing -> throwError (EInvalidUnop op valTy, LExpr e)
       Just outputTy -> pure $ ExprT (EUnop op val', outputTy)
-expression e@(Expr (EIf cond then' else')) =
+expression (Expr (EIf cond then' else')) =
   do
     cond'@(ExprT (_, condTy)) <- expression cond
     when (condTy /= TBool) $ throwError (ETypeMismatch TBool condTy, LExpr cond)
     then'' <- block then'
-    else'' <- block else'
-    let (thenTy, elseTy) = (blockType then'', blockType else'')
-    when (thenTy /= elseTy) $ throwError (ETypeMismatch thenTy elseTy, LExpr e)
-    pure $ ExprT (EIf cond' then'' else'', thenTy)
+    let branchTy = blockType then''
+    else'' <- blockWithType else' branchTy
+    pure $ ExprT (EIf cond' then'' else'', branchTy)
 expression (Expr (EWhile cond body)) =
   do
     cond'@(ExprT (_, condTy)) <- expression cond
     when (condTy /= TBool) $ throwError (ETypeMismatch TBool condTy, LExpr cond)
-    body' <- block body
-    pure $ ExprT (EWhile cond' body', blockType body')
+    body' <- blockWithType body TEmpty
+    pure $ ExprT (EWhile cond' body', TEmpty)
 expression (Expr (EIdent varname)) =
   do
     (_, ty) <- lookupVar varname
@@ -254,8 +247,8 @@ expression (Expr (EFor initStmt condExpr updateExpr body)) =
       updateExpr' <- expression updateExpr
       when (condTy /= TBool) $
         throwError (ETypeMismatch TBool condTy, LExpr condExpr)
-      body' <- block body
-      pure $ ExprT (EFor initStmt' condExpr' updateExpr' body', blockType body')
+      body' <- blockWithType body TEmpty
+      pure $ ExprT (EFor initStmt' condExpr' updateExpr' body', TEmpty)
 
 -- | Look up a function in the analyser context.
 lookupFunction :: Ident -> Analyser ([Type], Type)
@@ -276,6 +269,16 @@ lookupVar ident@(Ident name) =
       Just (STVar mut ty) -> pure (mut, ty)
       Just _ -> throwError (ENotAVariable ident, LIdent ident)
       Nothing -> throwError (EUndefinedSymbol ident, LIdent ident)
+
+-- | Analyse a block, verifying that it evaluates to the expected type.
+blockWithType :: Block -> Type -> Analyser BlockT
+blockWithType b expectedTy =
+  do
+    b' <- block b
+    let actualTy = blockType b'
+    when (actualTy /= expectedTy) $
+      throwError (ETypeMismatch expectedTy actualTy, LBlock b)
+    pure b'
 
 -- | Get the type of a block.
 blockType :: BlockT -> Type

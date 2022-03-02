@@ -70,37 +70,29 @@ validPrograms =
     testCase "for loop" $
       assertValidProgram
         ( Program
-            [ DFn (Ident "foo") [] TInt32 $
+            [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $
                   Just $
                     Expr
                       ( EFor
                           (SLet (PMutIdent $ Ident "i") Nothing (litI32 0))
                           ( Expr
-                              ( EBinop
-                                  OLessThan
-                                  (Expr (EIdent $ Ident "i"))
-                                  (litI32 10)
-                              )
+                              (EBinop OLessThan (varI32 "i") (litI32 10))
                           )
                           ( Expr
                               ( EAssign
                                   (Ident "i")
                                   ( Expr
-                                      ( EBinop
-                                          OAdd
-                                          (Expr (EIdent $ Ident "i"))
-                                          (litI32 1)
-                                      )
+                                      (EBinop OAdd (varI32 "i") (litI32 1))
                                   )
                               )
                           )
-                          (BExpr [] $ Just $ Expr (EIdent $ Ident "i"))
+                          (BExpr [SExpr $ varI32 "i"] Nothing)
                       )
             ]
         )
         ( Program
-            [ DFn (Ident "foo") [] TInt32 $
+            [ DFn (Ident "foo") [] TEmpty $
                 BExpr [] $
                   Just $
                     ExprT
@@ -111,10 +103,7 @@ validPrograms =
                               (litI32 0)
                           )
                           ( ExprT
-                              ( EBinop
-                                  OLessThan
-                                  (ExprT (EIdent $ Ident "i", TInt32))
-                                  (litI32 10),
+                              ( EBinop OLessThan (varI32 "i") (litI32 10),
                                 TBool
                               )
                           )
@@ -122,20 +111,15 @@ validPrograms =
                               ( EAssign
                                   (Ident "i")
                                   ( ExprT
-                                      ( EBinop
-                                          OAdd
-                                          (ExprT (EIdent $ Ident "i", TInt32))
-                                          (litI32 1),
+                                      ( EBinop OAdd (varI32 "i") (litI32 1),
                                         TInt32
                                       )
                                   ),
                                 TInt32
                               )
                           )
-                          ( BExpr [] $
-                              Just $ ExprT (EIdent $ Ident "i", TInt32)
-                          ),
-                        TInt32
+                          (BExpr [SExpr $ varI32 "i"] Nothing),
+                        TEmpty
                       )
             ]
         )
@@ -180,6 +164,21 @@ invalidPrograms =
             ]
         )
         (ETypeMismatch TBool TEmpty),
+    testCase "while loop body doesn't evaluate to empty" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TEmpty $
+                BExpr
+                  [ SExpr $
+                      Expr $
+                        EWhile (litBool False) $
+                          BExpr [] $
+                            Just $ litI32 4
+                  ]
+                  Nothing
+            ]
+        )
+        (ETypeMismatch TEmpty TInt32),
     testCase "for loop condition isn't a boolean" $
       assertInvalidProgram
         ( Program
@@ -194,5 +193,22 @@ invalidPrograms =
                         (BExpr [] $ Just litEmpty)
             ]
         )
-        (ETypeMismatch TBool TEmpty)
+        (ETypeMismatch TBool TEmpty),
+    testCase "for loop body doesn't evaluate to empty" $
+      assertInvalidProgram
+        ( Program
+            [ DFn (Ident "foo") [] TEmpty $
+                BExpr
+                  [ SExpr $
+                      Expr $
+                        EFor
+                          (SExpr litEmpty)
+                          (litBool True)
+                          litEmpty
+                          (BExpr [] $ Just $ litI32 4)
+                  ]
+                  Nothing
+            ]
+        )
+        (ETypeMismatch TEmpty TInt32)
   ]
