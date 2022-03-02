@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import subprocess
 from sys import version_info, platform, argv
+from time import time
+from multiprocessing import Pool, cpu_count
 
 # Type hinting tuple and list for all python3 versions
 if version_info < (3, 9):
@@ -19,26 +22,30 @@ else:
     BINARY_EXTENSION = '.bin'
 
 
-def build_project() -> None:
+def run_test(source_path: str) -> tuple[bool, str]:
     '''
-    Build the project to avoid waiting for compilation during the tests
+    Compile and execute the given source file.
+
+    Then, check if exit code is the same as the expected one located '*.code' or equal to 0 if no file is found.
+    Check if the output is the same as the expected output located in '*.out' or equal to '' if no file is found.
+    Same for the error output with '*.err' files.
+
+    Return True if all tests are passed, False otherwise with output.
     '''
-    print('Build koak...')
-    subprocess.call(['stack', 'build'], stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-    print('Build done\n')
 
+    # redirect print to a string to print in right order
+    output = ''
 
-def run_test(source_path: str, indent: int) -> bool:
-    '''
-    Compile and execute the given source file
+    def custom_print(value):
+        nonlocal output
+        if type(value) == str:
+            output += value + '\n'
+        else:
+            output += str(value) + '\n'
+    print = custom_print
 
-    Then, check if exit code is the same as the expected one located '*.code' or equal to 0 if no file is found
-    Check if the output is the same as the expected output located in '*.out' or equal to '' if no file is found
-    Same for the error output with '*.err' files
-
-    Return True if all tests are passed, False otherwise
-    '''
+    # store start time to compute execution time
+    start_time = time()
 
     source_path_without_extension = source_path[:-4]
 
@@ -102,15 +109,14 @@ def run_test(source_path: str, indent: int) -> bool:
             raise Exception(err)
 
         # all tests are passed
-        print(indent * INDENT + '[OK] ' + source_path.split('/')[-1])
+        execution_time = time() - start_time
+        print(f'[OK] {source_path.split("/")[-1]} ({execution_time:.2f}s)')
         has_succeeded = True
 
     except Exception as e:
         # if an error occurred, then the test has failed
-        print('>' * 80)
-        print(indent * INDENT + '[KO] ' + source_path)
+        print('[KO] ' + source_path)
         print(e)
-        print('<' * 80)
         has_succeeded = False
 
     # delete the binary
@@ -118,53 +124,19 @@ def run_test(source_path: str, indent: int) -> bool:
         os.remove(binary_path)
 
     # return True if all tests are passed, False otherwise
-    return has_succeeded
+    return has_succeeded, output
 
 
-def run_tests(dir: str, files: list[str], indent: int) -> tuple[int, int]:
+def build_project() -> None:
     '''
-    For each files like '*.koa' in the given directory, call run_test()
-
-    One '*.koa' file is one test
-    Return the number of success and failure tests as tuple
+    Build the project to avoid waiting for compilation during the tests.
     '''
-    success_count = 0
-    failure_count = 0
-
-    name = os.path.basename(dir)
-
-    # print test suite name
-    print(indent * INDENT + name + ':')
-
-    # run tests for each files end with .koa
-    for source in files:
-        if source.endswith('.koa'):
-            source_path = dir + '/' + source
-            # run the test
-            if run_test(source_path, indent + 1):
-                success_count += 1
-            else:
-                failure_count += 1
-
-    return success_count, failure_count
+    print('Build koak...')
+    subprocess.call(['stack', 'build'])
+    print('Build done\n')
 
 
-def print_summary(success_count: int, failure_count: int) -> None:
-    '''
-    Print the summary of the test
-    Exit with 1 if there is at least one failure, 0 otherwise
-    '''
-    print('\n')
-
-    if failure_count == 0:
-        print(f'{success_count} tests passed')
-        exit(0)
-
-    print(f'{failure_count} tests failed out of {success_count + failure_count}')
-    exit(1)
-
-
-def main(test_paths: list[str]) -> None:
+def main(test_paths: list[str], jobs_count: int) -> None:
     # build the project
     build_project()
 
@@ -178,24 +150,54 @@ def main(test_paths: list[str]) -> None:
         test_path = test_path.rstrip('/')
         # iterate on each subdirectory
         for (dir, _, files) in os.walk(test_path):
-            indent = dir[len(test_path):].count('/')
-            success_count_, failure_count_ = run_tests(dir, files, indent)
-            success_count += success_count_
-            failure_count += failure_count_
+            test_suite_name = dir.split('/')[-1]
+            indent = dir.count('/')
+            print(indent * INDENT + test_suite_name + ':')
 
-    # print summary
-    print_summary(success_count, failure_count)
+            # retrieve each file in the current directory ending with .koa
+            sources = [f'{dir}/{f}' for f in files if f.endswith('.koa')]
+
+            with Pool(processes=jobs_count) as pool:
+                # run tests in parallel
+                for res, output in pool.imap(run_test, sources):
+                    if res:
+                        # if test has succeeded
+                        success_count += 1
+                        print((indent + 1) * INDENT + output, end='')
+                    else:
+                        # if test has failed
+                        failure_count += 1
+                        print('>' * 80)
+                        print((indent + 1) * INDENT + output, end='')
+                        print('<' * 80)
+
+    # print summary and exit
+    print('\n')
+
+    if failure_count == 0:
+        print(f'{success_count} tests passed')
+        exit(0)
+
+    print(f'{failure_count} tests failed out of {success_count + failure_count}')
+    exit(1)
+
+
+def arg_check_positive(value):
+    v = int(value)
+    if v <= 0:
+        raise argparse.ArgumentTypeError(
+            f'{value} isn\'t a valid positive integer value')
+    return v
 
 
 if __name__ == '__main__':
-    if '-h' in argv or '--help' in argv:
-        print(f'Usage: python3 {argv[0]} [TEST_PATH]')
-
-    # get test paths
-    if len(argv) > 1:
-        test_paths = argv[1:]
-    else:
-        test_paths = [TEST_SOURCE_DIR]
+    # parse arguments
+    parser = argparse.ArgumentParser(description='Run integration tests')
+    parser.add_argument('-j', '--jobs', type=arg_check_positive, default=cpu_count(),
+                        help='run N tests in parallel (default: number of CPU cores)')
+    parser.add_argument('TEST_PATH', nargs='*', default=[TEST_SOURCE_DIR],
+                        help=f'path to the test directory (default: {TEST_SOURCE_DIR})')
+    args = parser.parse_args()
 
     # run tests
-    main(test_paths)
+    main(args.TEST_PATH, args.jobs)
