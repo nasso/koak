@@ -187,7 +187,7 @@ def arg_check_positive(value):
     v = int(value)
     if v <= 0:
         raise argparse.ArgumentTypeError(
-            "%s is an invalid positive int value" % value)
+            "%s isn't a valid positive integer value" % value)
     return v
 
 
