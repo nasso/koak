@@ -133,8 +133,42 @@ funBody :: Block -> Type -> Analyser BlockT
 funBody b@(BExpr _ le) rety =
   local (\e -> e {envFunType = Just rety}) $
     case le of
-      Nothing -> block b
+      Nothing ->
+        unless
+          (rety == TEmpty || blockUnconditionnallyReturns b)
+          (throwError (ETypeMismatch rety TEmpty, LBlock b))
+          >> block b
       _ -> blockWithType b rety
+
+-- | Figure out if a block unconditionally returns.
+blockUnconditionnallyReturns :: Block -> Bool
+blockUnconditionnallyReturns (BExpr stmts (Just e)) =
+  any stmtUnconditionnallyReturns stmts || exprUnconditionnallyReturns e
+blockUnconditionnallyReturns (BExpr stmts Nothing) =
+  any stmtUnconditionnallyReturns stmts
+
+-- | Figure out if a statement unconditionally returns.
+stmtUnconditionnallyReturns :: Stmt -> Bool
+stmtUnconditionnallyReturns (SReturn _) = True
+stmtUnconditionnallyReturns (SLet _ _ e) = exprUnconditionnallyReturns e
+stmtUnconditionnallyReturns (SExpr e) = exprUnconditionnallyReturns e
+
+-- | Figure out if an expression unconditionally returns.
+exprUnconditionnallyReturns :: Expr -> Bool
+exprUnconditionnallyReturns (Expr (EBlock b)) = blockUnconditionnallyReturns b
+exprUnconditionnallyReturns (Expr (EIdent _)) = False
+exprUnconditionnallyReturns (Expr (EIf _ then' else')) =
+  blockUnconditionnallyReturns then' && blockUnconditionnallyReturns else'
+exprUnconditionnallyReturns (Expr (EWhile e _)) = exprUnconditionnallyReturns e
+exprUnconditionnallyReturns (Expr (EFor i c _ _)) =
+  stmtUnconditionnallyReturns i || exprUnconditionnallyReturns c
+exprUnconditionnallyReturns (Expr (ECall _ args)) =
+  any exprUnconditionnallyReturns args
+exprUnconditionnallyReturns (Expr (EAssign _ e)) = exprUnconditionnallyReturns e
+exprUnconditionnallyReturns (Expr (EBinop _ lhs rhs)) =
+  exprUnconditionnallyReturns lhs || exprUnconditionnallyReturns rhs
+exprUnconditionnallyReturns (Expr (EUnop _ e)) = exprUnconditionnallyReturns e
+exprUnconditionnallyReturns (Expr (ELit _)) = False
 
 -- | Run a computation with a set of bindings.
 withBindings :: [TBinding] -> Analyser a -> Analyser a
