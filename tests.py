@@ -132,8 +132,7 @@ def build_project() -> None:
     Build the project to avoid waiting for compilation during the tests.
     '''
     print('Build koak...')
-    subprocess.call(['stack', 'build'], stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
+    subprocess.call(['stack', 'build'])
     print('Build done\n')
 
 
@@ -187,7 +186,7 @@ def arg_check_positive(value):
     v = int(value)
     if v <= 0:
         raise argparse.ArgumentTypeError(
-            "%s isn't a valid positive integer value" % value)
+            f'{value} isn\'t a valid positive integer value')
     return v
 
 
