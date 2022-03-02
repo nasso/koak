@@ -137,21 +137,6 @@ def build_project() -> None:
     print('Build done\n')
 
 
-def print_summary(success_count: int, failure_count: int) -> None:
-    '''
-    Print the summary of the test.
-    Exit with 1 if there is at least one failure, 0 otherwise.
-    '''
-    print('\n')
-
-    if failure_count == 0:
-        print(f'{success_count} tests passed')
-        exit(0)
-
-    print(f'{failure_count} tests failed out of {success_count + failure_count}')
-    exit(1)
-
-
 def main(test_paths: list[str], jobs_count: int) -> None:
     # build the project
     build_project()
@@ -187,8 +172,15 @@ def main(test_paths: list[str], jobs_count: int) -> None:
                         print((indent + 1) * INDENT + output, end='')
                         print('<' * 80)
 
-    # print summary
-    print_summary(success_count, failure_count)
+    # print summary and exit
+    print('\n')
+
+    if failure_count == 0:
+        print(f'{success_count} tests passed')
+        exit(0)
+
+    print(f'{failure_count} tests failed out of {success_count + failure_count}')
+    exit(1)
 
 
 def arg_check_positive(value):
