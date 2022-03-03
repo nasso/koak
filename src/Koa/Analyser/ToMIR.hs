@@ -13,8 +13,16 @@ def (HIR.DFn name bindings ty bod) =
     name' <- ident name
     (argNames, argTys, argInits) <- unzip3 <$> allBindings bindings
     ty' <- type' ty
-    bod' <- body bod
+    bod' <- funBody bod
     pure $ MIR.DFn name' (zip argNames argTys) ty' $ argInits ++ bod'
+
+funBody :: HIR.BlockT -> Analyser [MIR.Stmt]
+funBody (HIR.BExpr stmts Nothing) = mapM stmt stmts
+funBody (HIR.BExpr stmts (Just e)) =
+  do
+    stmts' <- mapM stmt stmts
+    e' <- expr e
+    pure $ stmts' ++ [MIR.SReturn e']
 
 ident :: HIR.Ident -> Analyser MIR.Ident
 ident (HIR.Ident i) = pure $ MIR.Ident i
@@ -45,28 +53,65 @@ type' HIR.TBool = pure MIR.TBool
 type' HIR.TInt32 = pure MIR.TInt32
 type' HIR.TFloat64 = pure MIR.TFloat64
 
-body :: HIR.BlockT -> Analyser [MIR.Stmt]
-body (HIR.BExpr stmts Nothing) = mapM stmt stmts
-body (HIR.BExpr stmts (Just e)) =
-  do
-    stmts' <- mapM stmt stmts
-    e' <- expr e
-    pure $ stmts' ++ [MIR.SReturn e']
-
 stmt :: HIR.StmtT -> Analyser MIR.Stmt
-stmt = error "not implemented"
+stmt (HIR.SExpr e) = MIR.SExpr <$> expr e
+stmt (HIR.SReturn e) = MIR.SReturn <$> expr e
+stmt (HIR.SLet pat _ e) = MIR.SLet <$> pattern' pat <*> expr e
 
 expr :: HIR.ExprT -> Analyser MIR.Expr
 expr (HIR.ExprT (HIR.EBlock b, _)) = MIR.EBlock <$> block b
-expr (HIR.ExprT (HIR.EIdent {}, _)) = error "not implemented: ToMIR.EIdent"
-expr (HIR.ExprT (HIR.EIf {}, _)) = error "not implemented: ToMIR.EIf"
-expr (HIR.ExprT (HIR.EWhile {}, _)) = error "not implemented: ToMIR.EWhile"
-expr (HIR.ExprT (HIR.EFor {}, _)) = error "not implemented: ToMIR.EFor"
-expr (HIR.ExprT (HIR.ECall {}, _)) = error "not implemented: ToMIR.ECall"
-expr (HIR.ExprT (HIR.EAssign {}, _)) = error "not implemented: ToMIR.EAssign"
-expr (HIR.ExprT (HIR.EBinop {}, _)) = error "not implemented: ToMIR.EBinop"
-expr (HIR.ExprT (HIR.EUnop {}, _)) = error "not implemented: ToMIR.EUnop"
-expr (HIR.ExprT (HIR.ELit {}, _)) = error "not implemented: ToMIR.ELit"
+expr (HIR.ExprT (HIR.EIdent i, ty)) = MIR.EVar <$> type' ty <*> ident i
+expr (HIR.ExprT (HIR.EIf cond then' else', _)) =
+  MIR.EIf <$> expr cond <*> block then' <*> block else'
+expr (HIR.ExprT (HIR.EWhile cond body, _)) =
+  do
+    cond' <- expr cond
+    body' <- block body
+    pure $ MIR.ELoop $ MIR.Block [] $ MIR.EIf cond' body' emptyBlock
+expr (HIR.ExprT (HIR.EFor initStmt cond update body, _)) =
+  do
+    initStmt' <- stmt initStmt
+    cond' <- expr cond
+    update' <- expr update
+    body' <- block body
+    pure . MIR.EBlock . MIR.Block [initStmt'] . MIR.ELoop . MIR.Block [] $
+      MIR.EIf
+        cond'
+        (MIR.Block [MIR.SExpr $ MIR.EBlock body'] update')
+        emptyBlock
+expr (HIR.ExprT (HIR.ECall name args, _)) =
+  MIR.ECall <$> ident name <*> mapM expr args
+expr (HIR.ExprT (HIR.EAssign name e, _)) = MIR.EAssign <$> ident name <*> expr e
+expr (HIR.ExprT (HIR.EBinop op lhs rhs, _)) =
+  MIR.EBinop <$> binop op <*> expr lhs <*> expr rhs
+expr (HIR.ExprT (HIR.EUnop op e, _)) = MIR.EUnop <$> unop op <*> expr e
+expr (HIR.ExprT (HIR.ELit lit, ty)) = MIR.EConst <$> lit' ty lit
+
+lit' :: HIR.Type -> HIR.Literal -> Analyser MIR.Constant
+lit' HIR.TInt32 (HIR.LInt n) = pure $ MIR.CInt32 $ fromIntegral n
+lit' HIR.TFloat64 (HIR.LFloat x) = pure $ MIR.CFloat64 x
+lit' HIR.TBool (HIR.LBool b) = pure $ MIR.CBool b
+lit' HIR.TEmpty HIR.LEmpty = pure MIR.CEmpty
+lit' t l = error $ "unsupported literal constant: " ++ show t ++ " " ++ show l
+
+binop :: HIR.Binop -> Analyser MIR.Binop
+binop HIR.OAdd = pure MIR.OAdd
+binop HIR.OSub = pure MIR.OSub
+binop HIR.OMul = pure MIR.OMul
+binop HIR.ODiv = pure MIR.ODiv
+binop HIR.OEquals = pure MIR.OEquals
+binop HIR.ONotEquals = pure MIR.ONotEquals
+binop HIR.OLessThan = pure MIR.OLessThan
+binop HIR.OGreaterThan = pure MIR.OGreaterThan
+binop HIR.OLessThanEq = pure MIR.OLessThanEq
+binop HIR.OGreaterThanEq = pure MIR.OGreaterThanEq
+
+unop :: HIR.Unop -> Analyser MIR.Unop
+unop HIR.ONot = pure MIR.ONot
+unop HIR.ONeg = pure MIR.ONeg
+
+emptyBlock :: MIR.Block
+emptyBlock = MIR.Block [] $ MIR.EConst MIR.CEmpty
 
 block :: HIR.BlockT -> Analyser MIR.Block
 block (HIR.BExpr stmts (Just e)) = MIR.Block <$> mapM stmt stmts <*> expr e
