@@ -64,6 +64,7 @@ term =
     <|> parserWhile
     <|> parserIf
     <|> parserCall
+    <|> parseAssign
     <|> (Expr . ELit <$> literal)
     <|> (Expr . EIdent <$> ident)
 
@@ -180,7 +181,7 @@ parserFor =
     symbol "for"
     i <- letStmt <* symbol ","
     e <- expr <* symbol ","
-    e' <- parseAssign
+    e' <- expr
     Expr . EFor i e e' <$> block
 
 parseAssign :: CharParser p => p Expr
