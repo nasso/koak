@@ -17,6 +17,7 @@ data Definition
 data Stmt
   = SExpr Expr
   | SReturn Expr
+  | SBreak Expr
   | SLet Pattern Expr
   deriving (Eq, Show)
 

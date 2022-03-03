@@ -67,7 +67,7 @@ expr (HIR.ExprT (HIR.EWhile cond body, _)) =
   do
     cond' <- expr cond
     body' <- block body
-    pure $ MIR.ELoop $ MIR.Block [] $ MIR.EIf cond' body' emptyBlock
+    pure $ MIR.ELoop $ MIR.Block [] $ MIR.EIf cond' body' breakEmpty
 expr (HIR.ExprT (HIR.EFor initStmt cond update body, _)) =
   do
     initStmt' <- stmt initStmt
@@ -78,7 +78,7 @@ expr (HIR.ExprT (HIR.EFor initStmt cond update body, _)) =
       MIR.EIf
         cond'
         (MIR.Block [MIR.SExpr $ MIR.EBlock body'] update')
-        emptyBlock
+        breakEmpty
 expr (HIR.ExprT (HIR.ECall name args, _)) =
   MIR.ECall <$> ident name <*> mapM expr args
 expr (HIR.ExprT (HIR.EAssign name e, _)) = MIR.EAssign <$> ident name <*> expr e
@@ -110,8 +110,11 @@ unop :: HIR.Unop -> Analyser MIR.Unop
 unop HIR.ONot = pure MIR.ONot
 unop HIR.ONeg = pure MIR.ONeg
 
-emptyBlock :: MIR.Block
-emptyBlock = MIR.Block [] $ MIR.EConst MIR.CEmpty
+breakEmpty :: MIR.Block
+breakEmpty =
+  MIR.Block
+    [MIR.SBreak $ MIR.EConst MIR.CEmpty]
+    $ MIR.EConst MIR.CEmpty
 
 block :: HIR.BlockT -> Analyser MIR.Block
 block (HIR.BExpr stmts (Just e)) = MIR.Block <$> mapM stmt stmts <*> expr e
