@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 
 validFor :: [TestTree]
 validFor =
-  [ testCase "for expression (for let a = 5, a <= b, a = a + 1 {})" $
+  [ testCase "for expression" $
       assertExpr "for let a = 5, a <= b, a = a + 1 {}" $
         Expr $
           EFor
@@ -38,7 +38,7 @@ validFor =
 
 validWhile :: [TestTree]
 validWhile =
-  [ testCase "while expression (while a <= b {})" $
+  [ testCase "while expression" $
       assertExpr "while a <= b {}" $
         Expr $
           EWhile
@@ -53,7 +53,7 @@ validWhile =
 
 validIf :: [TestTree]
 validIf =
-  [ testCase "if expression without else (if a <= b {})" $
+  [ testCase "if expression without else" $
       assertExpr "if a <= b {}" $
         Expr $
           EIf
@@ -65,7 +65,7 @@ validIf =
             )
             (BExpr [] Nothing)
             (BExpr [] Nothing),
-    testCase "if expression with else (if a <= b {} else {})" $
+    testCase "if expression with else" $
       assertExpr "if a <= b {} else {}" $
         Expr $
           EIf

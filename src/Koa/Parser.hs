@@ -60,7 +60,10 @@ prio = chainl1 term binopExprPrio
 
 term :: CharParser p => p Expr
 term =
-  parserFor <|> parserWhile <|> parserIf <|> fnCall
+  parserFor
+    <|> parserWhile
+    <|> parserIf
+    <|> parserCall
     <|> (Expr . ELit <$> literal)
     <|> (Expr . EIdent <$> ident)
 
@@ -194,7 +197,7 @@ parserWhile = do
   Expr . EWhile e <$> block
 
 parserIf :: CharParser p => p Expr
-parserIf = ifElse <|> onlyIf
+parserIf = parserIfElse <|> onlyIf
 
 onlyIf :: CharParser p => p Expr
 onlyIf =
@@ -207,8 +210,8 @@ onlyIf =
 emptyBlock :: CharParser p => p Block
 emptyBlock = pure $ BExpr [] Nothing
 
-ifElse :: CharParser p => p Expr
-ifElse =
+parserIfElse :: CharParser p => p Expr
+parserIfElse =
   do
     symbol "if"
     e <- expr
@@ -216,8 +219,8 @@ ifElse =
     symbol "else"
     Expr . EIf e b <$> block
 
-fnCall :: CharParser p => p Expr
-fnCall =
+parserCall :: CharParser p => p Expr
+parserCall =
   do
     i <- ident
     args <- parens $ sepBy expr (symbol ",")
