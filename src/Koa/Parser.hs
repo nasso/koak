@@ -60,7 +60,8 @@ prio = chainl1 term binopExprPrio
 
 term :: CharParser p => p Expr
 term =
-  (Expr . ELit <$> literal)
+  parserFor <|> parserWhile <|> parserIf <|> fncall
+    <|> (Expr . ELit <$> literal)
     <|> (Expr . EIdent <$> ident)
 
 expr :: CharParser p => p Expr
@@ -169,3 +170,50 @@ lexeme p = p <* optional whitespace
 
 whitespace :: CharParser p => p ()
 whitespace = void $ some $ match isSpace
+
+parserFor :: CharParser p => p Expr
+parserFor = do
+  symbol "for"
+  i <- letStmt <* symbol ","
+  e <- expr <* symbol ","
+  e' <- parseAssign
+  Expr . EFor i e e' <$> block
+
+parseAssign :: CharParser p => p Expr
+parseAssign = do
+  a <- ident
+  symbol "="
+  Expr . EAssign a <$> expr
+
+parserWhile :: CharParser p => p Expr
+parserWhile = do
+  symbol "while"
+  e <- expr
+  Expr . EWhile e <$> block
+
+parserIf :: CharParser p => p Expr
+parserIf = ifElse <|> onlyIf
+
+onlyIf :: CharParser p => p Expr
+onlyIf = do
+  symbol "if"
+  e <- expr
+  b <- block
+  Expr . EIf e b <$> emptyBlock
+
+emptyBlock :: CharParser p => p Block
+emptyBlock = pure $ BExpr [] Nothing
+
+ifElse :: CharParser p => p Expr
+ifElse = do
+  symbol "if"
+  e <- expr
+  b <- block
+  symbol "else"
+  Expr . EIf e b <$> block
+
+fncall :: CharParser p => p Expr
+fncall = do
+  i <- ident
+  args <- parens $ sepBy expr (symbol ",")
+  pure $ Expr $ ECall i args
