@@ -67,6 +67,7 @@ term =
     <|> parseAssign
     <|> (Expr . ELit <$> literal)
     <|> (Expr . EIdent <$> ident)
+    <|> (Expr . EBlock <$> block)
 
 expr :: CharParser p => p Expr
 expr = chainl1 prio binopExpr <|> term

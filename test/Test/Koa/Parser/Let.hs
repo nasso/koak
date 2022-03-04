@@ -115,6 +115,48 @@ valid =
                     Nothing
                 )
             ]
+        ),
+    testCase "typed non mutable wildcard block" $
+      assertProgram
+        "fn f(): () { let _: i32 = { 1 }; }"
+        ( Program
+            [ DFn
+                (Ident "f")
+                []
+                TEmpty
+                ( BExpr
+                    [ SLet
+                        PWildcard
+                        (Just TInt32)
+                        ( Expr $
+                            EBlock $
+                              BExpr [] (Just $ litI32 1)
+                        )
+                    ]
+                    Nothing
+                )
+            ]
+        ),
+    testCase "typed non mutable wildcard block empty" $
+      assertProgram
+        "fn f(): () { let _: () = { }; }"
+        ( Program
+            [ DFn
+                (Ident "f")
+                []
+                TEmpty
+                ( BExpr
+                    [ SLet
+                        PWildcard
+                        (Just TEmpty)
+                        ( Expr $
+                            EBlock $
+                              BExpr [] Nothing
+                        )
+                    ]
+                    Nothing
+                )
+            ]
         )
   ]
 
