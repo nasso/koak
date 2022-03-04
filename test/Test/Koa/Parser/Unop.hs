@@ -8,9 +8,7 @@ import Test.Tasty.HUnit
 validSimple :: [TestTree]
 validSimple =
   [ testCase "pos" $
-      assertExpr "+ 5" $
-        Expr $
-          ELit (LInt 5),
+      assertExpr "+ 5" $ Expr $ ELit (LInt 5),
     testCase "neg" $
       assertExpr "- 5" $
         Expr $
@@ -28,9 +26,7 @@ validSimple =
 validComplex :: [TestTree]
 validComplex =
   [ testCase "multi pos" $
-      assertExpr "++5" $
-        Expr $
-          ELit (LInt 5),
+      assertExpr "++5" $ Expr $ ELit (LInt 5),
     testCase "multi neg" $
       assertExpr "--5" $
         Expr $
