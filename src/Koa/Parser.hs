@@ -130,6 +130,8 @@ literal =
   LFloat <$> try floating
     <|> LInt <$> try integer
     <|> LEmpty <$ (symbol "(" >> symbol ")")
+    <|> LBool True <$ symbol "true"
+    <|> LBool False <$ symbol "false"
 
 integer :: CharParser p => p Integer
 integer = lexeme $ read <$> many1 digit

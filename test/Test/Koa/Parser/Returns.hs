@@ -106,6 +106,32 @@ valid =
                 )
             ]
         ),
+    testCase "function returning keyword true" $
+      assertProgram
+        "fn test(): bool {\n\
+        \  true\n\
+        \}\n"
+        ( Program
+            [ DFn
+                (Ident "test")
+                []
+                TBool
+                (BExpr [] $ Just $ litBool True)
+            ]
+        ),
+    testCase "function returning keyword false" $
+      assertProgram
+        "fn test(): bool {\n\
+        \  false\n\
+        \}\n"
+        ( Program
+            [ DFn
+                (Ident "test")
+                []
+                TBool
+                (BExpr [] $ Just $ litBool False)
+            ]
+        ),
     testCase "return statement returning 0" $
       assertProgram "fn f(): i32 { return 0; }\n" $
         Program
