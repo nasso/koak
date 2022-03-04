@@ -43,7 +43,7 @@ definition =
   DFn
     <$> (symbol "fn" >> ident)
     <*> parens (pure [])
-    <*> (symbol ":" >> type')
+    <*> ((symbol ":" >> type') <|> pure TEmpty)
     <*> block
 
 type' :: CharParser p => p Type
