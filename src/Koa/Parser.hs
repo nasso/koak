@@ -55,9 +55,6 @@ type' =
 block :: CharParser p => p Block
 block = braces $ BExpr <$> many stmt <*> optional expr
 
-prio :: CharParser p => p Expr
-prio = chainl1 term binopExprPrio
-
 term :: CharParser p => p Expr
 term =
   parserFor
@@ -69,7 +66,7 @@ term =
     <|> (Expr . EIdent <$> ident)
 
 expr :: CharParser p => p Expr
-expr = chainl1 prio binopExpr <|> term
+expr = parseTerm80
 
 mutIdent :: CharParser p => p Pattern
 mutIdent = PMutIdent <$> (symbol "mut" *> ident)
@@ -94,34 +91,56 @@ stmt =
     <|> letStmt <* symbol ";"
     <|> SExpr <$> expr <* symbol ";"
 
-binopExpr :: CharParser p => p (Expr -> Expr -> Expr)
-binopExpr =
-  do
-    op <- binop
-    pure $ \l r -> Expr $ EBinop op l r
+-- | Binop precedence
+-- | 80 -> Equality
+parseEq :: CharParser p => p (Expr -> Expr -> Expr)
+parseEq = (\l r -> Expr $ EBinop OEquals l r) <$ symbol "=="
 
-binopExprPrio :: CharParser p => p (Expr -> Expr -> Expr)
-binopExprPrio =
-  do
-    op <- binopPrio
-    pure $ \l r -> Expr $ EBinop op l r
+parseNe :: CharParser p => p (Expr -> Expr -> Expr)
+parseNe = (\l r -> Expr $ EBinop ONotEquals l r) <$ symbol "!="
 
-binopPrio :: CharParser p => p Binop
-binopPrio =
-  OMul <$ symbol "*"
-    <|> ODiv <$ symbol "/"
+parseLe :: CharParser p => p (Expr -> Expr -> Expr)
+parseLe = (\l r -> Expr $ EBinop OLessThanEq l r) <$ symbol "<="
 
--- | Parser for binary operators.
-binop :: CharParser p => p Binop
-binop =
-  OEquals <$ symbol "=="
-    <|> ONotEquals <$ symbol "!="
-    <|> OGreaterThanEq <$ symbol ">="
-    <|> OLessThanEq <$ symbol "<="
-    <|> OGreaterThan <$ symbol ">"
-    <|> OLessThan <$ symbol "<"
-    <|> OAdd <$ symbol "+"
-    <|> OSub <$ symbol "-"
+parseGe :: CharParser p => p (Expr -> Expr -> Expr)
+parseGe = (\l r -> Expr $ EBinop OGreaterThanEq l r) <$ symbol ">="
+
+parseLt :: CharParser p => p (Expr -> Expr -> Expr)
+parseLt = (\l r -> Expr $ EBinop OLessThan l r) <$ symbol "<"
+
+parseGt :: CharParser p => p (Expr -> Expr -> Expr)
+parseGt = (\l r -> Expr $ EBinop OGreaterThan l r) <$ symbol ">"
+
+parseTerm80 :: CharParser p => p Expr
+parseTerm80 =
+  parseTerm95
+    `chainl1` ( parseEq
+                  <|> parseNe
+                  <|> parseLe
+                  <|> parseGe
+                  <|> parseLt
+                  <|> parseGt
+              )
+
+-- | 95 -> Additive
+parseAdd :: CharParser p => p (Expr -> Expr -> Expr)
+parseAdd = (\l r -> Expr $ EBinop OAdd l r) <$ symbol "+"
+
+parseSub :: CharParser p => p (Expr -> Expr -> Expr)
+parseSub = (\l r -> Expr $ EBinop OSub l r) <$ symbol "-"
+
+parseTerm95 :: CharParser p => p Expr
+parseTerm95 = parseTerm100 `chainl1` (parseAdd <|> parseSub)
+
+-- | 100 -> Multiplicative
+parseMul :: CharParser p => p (Expr -> Expr -> Expr)
+parseMul = (\l r -> Expr $ EBinop OMul l r) <$ symbol "*"
+
+parseDiv :: CharParser p => p (Expr -> Expr -> Expr)
+parseDiv = (\l r -> Expr $ EBinop ODiv l r) <$ symbol "/"
+
+parseTerm100 :: CharParser p => p Expr
+parseTerm100 = term `chainl1` (parseMul <|> parseDiv)
 
 literal :: CharParser p => p Literal
 literal =
