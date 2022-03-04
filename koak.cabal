@@ -97,6 +97,7 @@ test-suite koak-test
       Test.Koa.Parser.Let
       Test.Koa.Parser.Loop
       Test.Koa.Parser.Returns
+      Test.Koa.Parser.Unop
       Test.Koa.Parser.Utils
       Test.Koa.Util
       Paths_koak

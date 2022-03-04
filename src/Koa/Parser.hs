@@ -58,17 +58,16 @@ block = braces $ BExpr <$> many stmt <*> optional expr
 
 term :: CharParser p => p Expr
 term =
-  parserFor
-    <|> parserWhile
-    <|> parserIf
-    <|> parserCall
-    <|> parseAssign
-    <|> (Expr . ELit <$> literal)
-    <|> (Expr . EIdent <$> ident)
-    <|> (Expr . EBlock <$> block)
-
-expr :: CharParser p => p Expr
-expr = parseTerm80
+  parseUnaryOperators
+    <*> ( parserFor
+            <|> parserWhile
+            <|> parserIf
+            <|> parserCall
+            <|> parseAssign
+            <|> (Expr . ELit <$> literal)
+            <|> (Expr . EIdent <$> ident)
+            <|> (Expr . EBlock <$> block)
+        )
 
 mutIdent :: CharParser p => p Pattern
 mutIdent = PMutIdent <$> (symbol "mut" *> ident)
@@ -93,7 +92,28 @@ stmt =
     <|> letStmt <* symbol ";"
     <|> SExpr <$> expr <* symbol ";"
 
--- | Binop precedence
+expr :: CharParser p => p Expr
+expr = parseTerm80
+
+-- | Unary operators
+parsePos :: CharParser p => p (Expr -> Expr)
+parsePos = id <$ symbol "+"
+
+parseNeg :: CharParser p => p (Expr -> Expr)
+parseNeg = (Expr . EUnop ONeg) <$ symbol "-"
+
+parseNot :: CharParser p => p (Expr -> Expr)
+parseNot = (Expr . EUnop ONot) <$ symbol "!"
+
+parseUnaryOperator :: CharParser p => p (Expr -> Expr)
+parseUnaryOperator = parsePos <|> parseNeg <|> parseNot
+
+parseUnaryOperators :: CharParser p => p (Expr -> Expr)
+parseUnaryOperators = (parseUnaryOperator >>= nextUnaryOperators) <|> pure id
+  where
+    nextUnaryOperators = \f -> parseUnaryOperators >>= \g -> pure (g . f)
+
+-- | Binary operators precedence
 -- | 80 -> Equality
 parseEq :: CharParser p => p (Expr -> Expr -> Expr)
 parseEq = (\l r -> Expr $ EBinop OEquals l r) <$ symbol "=="
