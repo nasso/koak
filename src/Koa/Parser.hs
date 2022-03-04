@@ -94,7 +94,7 @@ stmt =
 expr :: CharParser p => p Expr
 expr = parseTerm80
 
--- | Unary operators
+-- Unary operators
 parsePos :: CharParser p => p (Expr -> Expr)
 parsePos = id <$ symbol "+"
 
@@ -107,8 +107,8 @@ parseNot = (Expr . EUnop ONot) <$ symbol "!"
 parseUnop :: CharParser p => p Expr
 parseUnop = (parsePos <|> parseNeg <|> parseNot) <*> term
 
--- | Binary operators precedence
--- | 80 -> Equality
+-- Binary operators precedence
+-- 80 -> Equality
 parseEq :: CharParser p => p (Expr -> Expr -> Expr)
 parseEq = (\l r -> Expr $ EBinop OEquals l r) <$ symbol "=="
 
@@ -138,7 +138,7 @@ parseTerm80 =
                   <|> parseGt
               )
 
--- | 95 -> Additive
+-- 95 -> Additive
 parseAdd :: CharParser p => p (Expr -> Expr -> Expr)
 parseAdd = (\l r -> Expr $ EBinop OAdd l r) <$ symbol "+"
 
@@ -148,7 +148,7 @@ parseSub = (\l r -> Expr $ EBinop OSub l r) <$ symbol "-"
 parseTerm95 :: CharParser p => p Expr
 parseTerm95 = parseTerm100 `chainl1` (parseAdd <|> parseSub)
 
--- | 100 -> Multiplicative
+-- 100 -> Multiplicative
 parseMul :: CharParser p => p (Expr -> Expr -> Expr)
 parseMul = (\l r -> Expr $ EBinop OMul l r) <$ symbol "*"
 
