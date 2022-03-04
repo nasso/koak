@@ -51,6 +51,7 @@ type' =
   TEmpty <$ (symbol "(" >> symbol ")")
     <|> TInt32 <$ symbol "i32"
     <|> TFloat64 <$ symbol "f64"
+    <|> TBool <$ symbol "bool"
 
 block :: CharParser p => p Block
 block = braces $ BExpr <$> many stmt <*> optional expr
@@ -129,6 +130,8 @@ literal =
   LFloat <$> try floating
     <|> LInt <$> try integer
     <|> LEmpty <$ (symbol "(" >> symbol ")")
+    <|> LBool True <$ symbol "true"
+    <|> LBool False <$ symbol "false"
 
 integer :: CharParser p => p Integer
 integer = lexeme $ read <$> many1 digit

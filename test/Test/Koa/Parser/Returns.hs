@@ -86,6 +86,52 @@ valid =
                 )
             ]
         ),
+    testCase "function returning a binary operator using a variable bool" $
+      assertProgram
+        "fn test(): bool {\n\
+        \  a < b\n\
+        \}\n"
+        ( Program
+            [ DFn
+                (Ident "test")
+                []
+                TBool
+                ( BExpr [] $
+                    Just $
+                      Expr $
+                        EBinop
+                          OLessThan
+                          (varI32 "a")
+                          (varI32 "b")
+                )
+            ]
+        ),
+    testCase "function returning keyword true" $
+      assertProgram
+        "fn test(): bool {\n\
+        \  true\n\
+        \}\n"
+        ( Program
+            [ DFn
+                (Ident "test")
+                []
+                TBool
+                (BExpr [] $ Just $ litBool True)
+            ]
+        ),
+    testCase "function returning keyword false" $
+      assertProgram
+        "fn test(): bool {\n\
+        \  false\n\
+        \}\n"
+        ( Program
+            [ DFn
+                (Ident "test")
+                []
+                TBool
+                (BExpr [] $ Just $ litBool False)
+            ]
+        ),
     testCase "return statement returning 0" $
       assertProgram "fn f(): i32 { return 0; }\n" $
         Program

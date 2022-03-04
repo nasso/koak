@@ -80,6 +80,94 @@ valid =
                 )
             ]
         ),
+    testCase "typed non mutable ident a bool" $
+      assertProgram
+        "fn f(): () { let a: bool = a < b; }"
+        ( Program
+            [ DFn
+                (Ident "f")
+                []
+                TEmpty
+                ( BExpr
+                    [ SLet
+                        (PIdent $ Ident "a")
+                        (Just TBool)
+                        ( Expr $
+                            EBinop
+                              OLessThan
+                              (varI32 "a")
+                              (varI32 "b")
+                        )
+                    ]
+                    Nothing
+                )
+            ]
+        ),
+    testCase "typed non mutable ident a bool block" $
+      assertProgram
+        "fn f(): () { let a: bool = { a < b }; }"
+        ( Program
+            [ DFn
+                (Ident "f")
+                []
+                TEmpty
+                ( BExpr
+                    [ SLet
+                        (PIdent $ Ident "a")
+                        (Just TBool)
+                        ( Expr $
+                            EBlock $
+                              BExpr
+                                []
+                                ( Just $
+                                    Expr $
+                                      EBinop
+                                        OLessThan
+                                        (varI32 "a")
+                                        (varI32 "b")
+                                )
+                        )
+                    ]
+                    Nothing
+                )
+            ]
+        ),
+    testCase "typed non mutable ident a bool kw false" $
+      assertProgram
+        "fn f(): () { let a: bool = false; }"
+        ( Program
+            [ DFn
+                (Ident "f")
+                []
+                TEmpty
+                ( BExpr
+                    [ SLet
+                        (PIdent $ Ident "a")
+                        (Just TBool)
+                        (litBool False)
+                    ]
+                    Nothing
+                )
+            ]
+        ),
+    testCase "typed non mutable ident a bool kw true" $
+      assertProgram
+        "fn f(): () { let a: bool = true; }"
+        ( Program
+            [ DFn
+                (Ident "f")
+                []
+                TEmpty
+                ( BExpr
+                    [ SLet
+                        (PIdent $ Ident "a")
+                        (Just TBool)
+                        (litBool True)
+                    ]
+                    Nothing
+                )
+            ]
+        ),
     testCase "typed mutable ident a" $
       assertProgram
         "fn f(): () { let mut a: i32 = 1; }"
