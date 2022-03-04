@@ -92,6 +92,7 @@ test-suite koak-test
       Test.Koa.Analyser.Variables
       Test.Koa.Compiler
       Test.Koa.Parser
+      Test.Koa.Parser.Assignment
       Test.Koa.Parser.Binop
       Test.Koa.Parser.Let
       Test.Koa.Parser.Loop
