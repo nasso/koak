@@ -60,10 +60,22 @@ def run_test(source_path: str) -> tuple[bool, str]:
                                    source_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         _, p_stderr = process.communicate()
 
-        # check if no compilation error occurred
-        if process.returncode != 0:
-            p_stderr = p_stderr.decode('utf-8').strip()
-            raise Exception('Error: compilation failed\n' + p_stderr)
+        if source_path.split('/')[-1].startswith('error_'):
+            # if compilation is expected to fail
+            if process.returncode == 0:
+                # fail
+                raise Exception('Error: compilation succeed but expected to fail')
+            else:
+                # success
+                execution_time = time() - start_time
+                print(f'[OK] {source_path.split("/")[-1]} ({execution_time:.2f}s)')
+                return True, output
+        else:
+            # else check if no compilation error occurred
+            if process.returncode != 0:
+                # fail
+                p_stderr = p_stderr.decode('utf-8').strip()
+                raise Exception('Error: compilation failed\n' + p_stderr)
 
         # execute the binary
         process = subprocess.Popen(
