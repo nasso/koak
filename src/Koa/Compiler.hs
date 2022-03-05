@@ -57,34 +57,34 @@ genModule :: Program -> IO AST.Module
 genModule (Program defs) =
   buildModuleT "__main_module" $ traverse_ genDef defs
 
-data Vars = Vars
-  { varOperands :: HashMap String AST.Operand,
-    varRetCont :: Maybe AST.Operand -> Codegen ()
+data Scope = Scope
+  { scpVars :: HashMap String AST.Operand,
+    scpRetCont :: Maybe AST.Operand -> Codegen ()
   }
 
-newVars :: Vars
-newVars =
-  Vars
-    { varOperands = HM.empty,
-      varRetCont = \_ -> pure ()
+newScope :: Scope
+newScope =
+  Scope
+    { scpVars = HM.empty,
+      scpRetCont = \_ -> pure ()
     }
 
-getVar :: Ident -> Vars -> AST.Operand
+getVar :: Ident -> Scope -> AST.Operand
 getVar (Ident i) v =
-  case HM.lookup i (varOperands v) of
+  case HM.lookup i (scpVars v) of
     Just o -> o
     Nothing -> error $ "Variable " ++ i ++ " not found"
 
-setVar :: Ident -> AST.Operand -> Vars -> Vars
-setVar (Ident i) val v = v {varOperands = HM.insert i val (varOperands v)}
+setVar :: Ident -> AST.Operand -> Scope -> Scope
+setVar (Ident i) val v = v {scpVars = HM.insert i val (scpVars v)}
 
-setRetCont :: (Maybe AST.Operand -> Codegen ()) -> Vars -> Vars
-setRetCont f v = v {varRetCont = f}
+setRetCont :: (Maybe AST.Operand -> Codegen ()) -> Scope -> Scope
+setRetCont f v = v {scpRetCont = f}
 
 newtype Codegen a = Codegen
   { runCodegen ::
       ReaderT
-        Vars
+        Scope
         ( ContT
             ()
             ( IRBuilderT
@@ -100,7 +100,7 @@ newtype Codegen a = Codegen
       Applicative,
       Monad,
       MonadFail,
-      MonadReader Vars,
+      MonadReader Scope,
       MonadIRBuilder,
       MonadCont,
       MonadModuleBuilder
@@ -111,7 +111,7 @@ genDef :: Definition -> ModuleBuilderT IO AST.Operand
 genDef (DFn (Ident "main") [] rety body) =
   function (AST.mkName "__koa_main") [] LLVMType.i32 $
     \ops ->
-      runContT (runReaderT (runCodegen $ bodyFor rety ops) newVars) pure
+      runContT (runReaderT (runCodegen $ bodyFor rety ops) newScope) pure
   where
     bodyFor TInt32 ops = genBody body ops
     bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
@@ -121,7 +121,7 @@ genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (genArgs args) (llvmType rety) $
     \ops ->
-      runContT (runReaderT (runCodegen $ genBody body ops) newVars) pure
+      runContT (runReaderT (runCodegen $ genBody body ops) newScope) pure
 
 genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
 genArgs args = genArg <$> args
@@ -145,7 +145,7 @@ genStmt (SLet pat t expr) k = genStmtLet pat t expr k
 genStmt (SReturn e) k =
   do
     e' <- genExpr e
-    retCont <- asks varRetCont
+    retCont <- asks scpRetCont
     retCont e' >> k
 genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak _) _ = error "unimplemented break statement"
