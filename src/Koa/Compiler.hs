@@ -165,7 +165,7 @@ genStmtLet (PMutIdent name) t expr k =
 allocate :: Ident -> Type -> AST.Operand -> Codegen a -> Codegen a
 allocate name t val k =
   do
-    addr <- alloca (llvmType t) (Just val) 0
+    addr <- alloca (llvmType t) Nothing 0
     store addr 0 val
     local (setVar name addr) k
 
