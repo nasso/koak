@@ -58,14 +58,16 @@ genModule :: Program -> IO AST.Module
 genModule (Program defs) =
   buildModuleT "__main_module" $ traverse_ genDef defs
 
-newtype Scope = Scope
-  { scpVars :: HashMap String AST.Operand
+data Scope = Scope
+  { scpVars :: HashMap String AST.Operand,
+    scpBreakDest :: Maybe AST.Name
   }
 
 newScope :: Scope
 newScope =
   Scope
-    { scpVars = HM.empty
+    { scpVars = HM.empty,
+      scpBreakDest = Nothing
     }
 
 getVar :: Ident -> Scope -> AST.Operand
@@ -76,6 +78,9 @@ getVar (Ident i) v =
 
 setVar :: Ident -> AST.Operand -> Scope -> Scope
 setVar (Ident i) val v = v {scpVars = HM.insert i val (scpVars v)}
+
+setBreakDest :: AST.Name -> Scope -> Scope
+setBreakDest dest v = v {scpBreakDest = Just dest}
 
 newtype Codegen a = Codegen
   { runCodegen ::
@@ -144,7 +149,11 @@ genStmt :: Stmt -> Codegen a -> Codegen a
 genStmt (SLet pat t expr) k = genStmtLet pat t expr k
 genStmt (SReturn e) k = (return' =<< genExpr e) >> k
 genStmt (SExpr e) k = genExpr e >> k
-genStmt (SBreak _) _ = error "unimplemented break statement"
+genStmt (SBreak e) k =
+  do
+    Just d <- asks scpBreakDest
+    Nothing <- genExpr e
+    br' d >> k
 
 genStmtLet :: Pattern -> Type -> Expr -> Codegen a -> Codegen a
 genStmtLet PWildcard _ e k = genExpr e >> k
@@ -193,13 +202,21 @@ genExpr (EIf cond then' else') =
       (Just thenVal', Just elseVal') ->
         Just <$> phi [(thenVal', thenBlock), (elseVal', elseBlock)]
       _ -> pure Nothing
-genExpr ELoop {} = error "unimplemented genExpr.ELoop"
+genExpr (ELoop bl) =
+  mdo
+    (loopStart, loopVal) <- local (setBreakDest exitBlock) $ genBlock "loop" bl
+    br' loopStart
+    exitBlock <- block `named` "loop_exit"
+    case loopVal of
+      Nothing -> pure Nothing
+      Just _ -> error "unimplemented loop with non-void break"
 genExpr ECall {} = error "unimplemented genExpr.ECall"
 genExpr (EAssign name e) = genAssign name e
 
 genBlock :: ShortByteString -> Block -> Codegen (AST.Name, Maybe AST.Operand)
 genBlock label bl =
-  do
+  mdo
+    br' name
     name <- block `named` label
     res <- genInlineBlock bl
     pure (name, res)
