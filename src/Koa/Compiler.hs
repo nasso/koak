@@ -32,20 +32,6 @@ newtype CompilerConfig = CompilerConfig
 -- | Output format for the compiled program.
 data OutputFormat = Assembly | NativeObject deriving (Show, Eq)
 
-newtype Vars = Vars
-  { operands :: HashMap String AST.Operand
-  }
-  deriving (Eq, Show)
-
-newVars :: Vars
-newVars = Vars HM.empty
-
-getVar :: String -> Vars -> AST.Operand
-getVar s (Vars v) =
-  case HM.lookup s v of
-    Just o -> o
-    Nothing -> error $ "Variable " ++ s ++ " not found"
-
 -- | Compile a program.
 compileProgramToFile :: FilePath -> CompilerConfig -> Program -> IO ()
 compileProgramToFile path cfg ast =
@@ -70,6 +56,23 @@ genModule :: Program -> IO AST.Module
 genModule (Program defs) =
   buildModuleT "__main_module" $ traverse_ genDef defs
 
+newtype Vars = Vars
+  { varOperands :: HashMap String AST.Operand
+  }
+  deriving (Eq, Show)
+
+newVars :: Vars
+newVars = Vars HM.empty
+
+getVar :: Ident -> Vars -> AST.Operand
+getVar (Ident i) (Vars v) =
+  case HM.lookup i v of
+    Just o -> o
+    Nothing -> error $ "Variable " ++ i ++ " not found"
+
+setVar :: Ident -> AST.Operand -> Vars -> Vars
+setVar (Ident i) val v = v {varOperands = HM.insert i val (varOperands v)}
+
 newtype Codegen a = Codegen
   { runCodegen :: ReaderT Vars (IRBuilderT (ModuleBuilderT IO)) a
   }
@@ -82,9 +85,6 @@ newtype Codegen a = Codegen
       MonadIRBuilder,
       MonadModuleBuilder
     )
-
-assign :: String -> AST.Operand -> Vars -> Vars
-assign name addr v = v {operands = HM.insert name addr (operands v)}
 
 genDef :: Definition -> ModuleBuilderT IO AST.Operand
 -- main special case
@@ -125,25 +125,25 @@ genStmt (SBreak _) _ = error "unimplemented break statement"
 genStmtLet :: Pattern -> Type -> Expr -> Codegen a -> Codegen a
 genStmtLet PWildcard _ e k = genExpr e >> k
 genStmtLet _ TEmpty e k = genExpr e >> k
-genStmtLet (PIdent (Ident name)) t expr k =
+genStmtLet (PIdent name) t expr k =
   do
     Just expr' <- genExpr expr
     allocate name t expr' k
-genStmtLet (PMutIdent (Ident name)) t expr k =
+genStmtLet (PMutIdent name) t expr k =
   do
     Just expr' <- genExpr expr
     allocate name t expr' k
 
-allocate :: String -> Type -> AST.Operand -> Codegen a -> Codegen a
+allocate :: Ident -> Type -> AST.Operand -> Codegen a -> Codegen a
 allocate name t val k =
   do
     addr <- alloca (llvmType t) (Just val) 0
     store addr 0 val
-    local (assign name addr) k
+    local (setVar name addr) k
 
 genExpr :: Expr -> Codegen (Maybe AST.Operand)
 -- literal
-genExpr (EConst lit) = pure $ genConst lit
+genExpr (EConst c) = pure $ llvmConst c
 -- unary op
 genExpr (EUnop operator e) =
   do
@@ -181,17 +181,17 @@ genBinop OGreaterThanEq = icmp IPred.SGE
 
 genIdent :: (Ident, Type) -> Codegen (Maybe AST.Operand)
 genIdent (_, TEmpty) = pure Nothing
-genIdent (Ident name, _) =
+genIdent (name, _) =
   do
     v <- asks $ getVar name
     Just <$> load v 0
 
-genConst :: Constant -> Maybe AST.Operand
-genConst (CInt32 n) = Just $ int32 $ fromIntegral n
-genConst (CFloat64 n) = Just $ double n
-genConst (CBool True) = Just $ bit 1
-genConst (CBool False) = Just $ bit 0
-genConst CEmpty = Nothing
+llvmConst :: Constant -> Maybe AST.Operand
+llvmConst (CInt32 n) = Just $ int32 $ fromIntegral n
+llvmConst (CFloat64 n) = Just $ double n
+llvmConst (CBool True) = Just $ bit 1
+llvmConst (CBool False) = Just $ bit 0
+llvmConst CEmpty = Nothing
 
 llvmType :: Type -> LLVMType.Type
 llvmType TInt32 = LLVMType.i32
