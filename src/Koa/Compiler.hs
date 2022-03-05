@@ -22,8 +22,6 @@ import LLVM.IRBuilder
 import LLVM.Module
 import LLVM.Target
 import System.Directory
-import qualified Control.Monad as LLVM
-import Data.Maybe (fromMaybe)
 
 -- | Configuration for the compiler.
 newtype CompilerConfig = CompilerConfig
