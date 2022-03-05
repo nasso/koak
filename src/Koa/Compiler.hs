@@ -161,7 +161,7 @@ genExpr EBlock {} = error "unimplemented genExpr.EBlock"
 genExpr EIf {} = error "unimplemented genExpr.EIf"
 genExpr ELoop {} = error "unimplemented genExpr.ELoop"
 genExpr ECall {} = error "unimplemented genExpr.ECall"
-genExpr EAssign {} = error "unimplemented genExpr.EAssign"
+genExpr (EAssign (Ident name) e) = genAssign (Ident name, e)
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
@@ -185,6 +185,14 @@ genIdent (name, _) =
   do
     v <- asks $ getVar name
     Just <$> load v 0
+
+genAssign :: (Ident, Expr) -> Codegen (Maybe AST.Operand)
+genAssign (name, e) =
+  do
+    Just e' <- genExpr e
+    v <- asks $ getVar name
+    store v 0 e'
+    pure Nothing
 
 llvmConst :: Constant -> Maybe AST.Operand
 llvmConst (CInt32 n) = Just $ int32 $ fromIntegral n
