@@ -1,6 +1,6 @@
 module Test.Koa.Parser.Returns (returnTests) where
 
-import Koa.Syntax
+import Koa.Syntax.HIR
 import Test.Koa.Parser.Utils
 import Test.Koa.Util
 import Test.Tasty

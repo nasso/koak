@@ -12,7 +12,8 @@ import Koa.Analyser
 import Koa.Compiler
 import Koa.Linker
 import Koa.Parser
-import Koa.Syntax
+import qualified Koa.Syntax.HIR as HIR
+import qualified Koa.Syntax.MIR as MIR
 import System.Exit
 import System.FilePath
 import System.IO
@@ -103,7 +104,7 @@ compileAllAndLink (p : ps) objs
   | otherwise = compileAllAndLink ps (p : objs)
 
 -- | Parse a file into an AST
-parsed :: FilePath -> App Program
+parsed :: FilePath -> App HIR.Program
 parsed p =
   do
     src <- liftIO (readFile p)
@@ -112,14 +113,14 @@ parsed p =
       Right ast -> pure ast
 
 -- | Parse and type-check a file into a typed AST
-checked :: FilePath -> App ProgramT
+checked :: FilePath -> App MIR.Program
 checked p =
   do
     cfg <- asks argAnalyserConfig
     ast <- parsed p
     case analyseProgram cfg ast of
       Left s -> logError (p ++ ":\n" ++ show s) >> throwError ()
-      Right (tast, warnings) -> tast <$ traverse_ warn (show <$> warnings)
+      Right (mir, warnings) -> mir <$ traverse_ warn (show <$> warnings)
   where
     warn s = logWarn (p ++ ":\n" ++ s)
 

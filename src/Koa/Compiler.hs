@@ -8,7 +8,7 @@ module Koa.Compiler
 where
 
 import Data.Foldable
-import Koa.Syntax
+import Koa.Syntax.MIR
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.IntegerPredicate as IPred
 import qualified LLVM.AST.Type as LLVMType
@@ -28,7 +28,7 @@ newtype CompilerConfig = CompilerConfig
 data OutputFormat = Assembly | NativeObject deriving (Show, Eq)
 
 -- | Compile a program.
-compileProgramToFile :: FilePath -> CompilerConfig -> ProgramT -> IO ()
+compileProgramToFile :: FilePath -> CompilerConfig -> Program -> IO ()
 compileProgramToFile path cfg ast =
   withContext $ \ctx ->
     withModuleFromAST ctx (genModule ast) $ \modir ->
@@ -45,66 +45,72 @@ emit NativeObject path modir =
           writeObjectToFile target (File path) modir
       )
 
-genModule :: ProgramT -> AST.Module
+genModule :: Program -> AST.Module
 genModule (Program defs) =
   buildModule "__main_module" $ traverse_ genDef defs
 
-genDef :: MonadModuleBuilder m => DefinitionT -> m AST.Operand
+genDef :: MonadModuleBuilder m => Definition -> m AST.Operand
 -- main special case
 genDef (DFn (Ident "main") [] TInt32 body) =
   function (AST.mkName "__koa_main") [] LLVMType.i32 $ genBody body
 genDef (DFn (Ident "main") [] TEmpty body) =
   function (AST.mkName "__koa_main") [] LLVMType.i32 $ \ops ->
     genBody body ops <* ret (int32 0)
-genDef (DFn (Ident "main") [] _ _) = error "`main` can only return empty or i32"
-genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
+genDef (DFn (Ident "main") [] _ _) =
+  error "`main` can only return empty or i32"
+genDef (DFn (Ident "main") _ _ _) =
+  error "`main` must have no arguments"
 -- normal functions
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
   where
     arg = error "unimplemented genDef.arg"
 
-genBody :: MonadIRBuilder m => BlockT -> [AST.Operand] -> m ()
-genBody (BExpr [] (Just expr@(ExprT (_, TEmpty)))) [] =
+genBody :: MonadIRBuilder m => [Stmt] -> [AST.Operand] -> m ()
+genBody [SReturn expr@(EConst CEmpty)] [] =
   do
     _ <- block `named` "entry"
     _ <- genExpr expr
     retVoid
-genBody (BExpr [] (Just expr)) [] =
+genBody [SReturn expr] [] =
   do
     _ <- block `named` "entry"
     res <- genExpr expr
     ret res
 genBody _ _ = error "unimplemented genBody for statements"
 
-genExpr :: MonadIRBuilder m => ExprT -> m AST.Operand
+genExpr :: MonadIRBuilder m => Expr -> m AST.Operand
 -- literal
-genExpr (ExprT (ELit lit, _)) = pure $ genLiteral lit
+genExpr (EConst lit) = pure $ genConst lit
 -- unary op
-genExpr (ExprT (EUnop op e, _)) =
+genExpr (EUnop op e) =
   do
     e' <- genExpr e
     genUnop op e'
 -- binary op
-genExpr (ExprT (EBinop op left right, _)) =
+genExpr (EBinop op left right) =
   do
     left' <- genExpr left
     right' <- genExpr right
     genBinop op left' right'
 -- other
-genExpr (ExprT (EIdent (Ident _), _)) = error "unimplemented genExpr.Ident"
-genExpr (ExprT (EBlock _, _)) = error "unimplemented genExpr.EBlock"
-genExpr (ExprT (EIf _ _ _, _)) = error "unimplemented genExpr.EIf"
-genExpr (ExprT (EWhile _ _, _)) = error "unimplemented genExpr.EWhile"
-genExpr (ExprT (EFor _ _ _ _, _)) = error "unimplemented genExpr.EFor"
-genExpr (ExprT (ECall (Ident _) _, _)) = error "unimplemented genExpr.ECall"
-genExpr (ExprT (EAssign (Ident _) _, _)) = error "unimplemented genExpr.EAssign"
+genExpr EVar {} = error "unimplemented genExpr.EVar"
+genExpr EBlock {} = error "unimplemented genExpr.EBlock"
+genExpr EIf {} = error "unimplemented genExpr.EIf"
+genExpr ELoop {} = error "unimplemented genExpr.ELoop"
+genExpr ECall {} = error "unimplemented genExpr.ECall"
+genExpr EAssign {} = error "unimplemented genExpr.EAssign"
 
 genUnop :: MonadIRBuilder m => Unop -> AST.Operand -> m AST.Operand
 genUnop ONeg = sub (int32 0)
 genUnop _ = error "unimplemented genUnop'"
 
-genBinop :: MonadIRBuilder m => Binop -> AST.Operand -> AST.Operand -> m AST.Operand
+genBinop ::
+  MonadIRBuilder m =>
+  Binop ->
+  AST.Operand ->
+  AST.Operand ->
+  m AST.Operand
 genBinop OAdd = add
 genBinop OSub = sub
 genBinop OMul = mul
@@ -116,12 +122,12 @@ genBinop OGreaterThan = icmp IPred.SGT
 genBinop OLessThanEq = icmp IPred.SLE
 genBinop OGreaterThanEq = icmp IPred.SGE
 
-genLiteral :: Literal -> AST.Operand
-genLiteral (LInt n) = int32 n
-genLiteral (LFloat n) = double n
-genLiteral (LBool True) = bit 1
-genLiteral (LBool False) = bit 0
-genLiteral LEmpty = error "can't generate empty literal"
+genConst :: Constant -> AST.Operand
+genConst (CInt32 n) = int32 $ fromIntegral n
+genConst (CFloat64 n) = double n
+genConst (CBool True) = bit 1
+genConst (CBool False) = bit 0
+genConst CEmpty = error "can't generate empty literal"
 
 llvmType :: Type -> LLVMType.Type
 llvmType TInt32 = LLVMType.i32
