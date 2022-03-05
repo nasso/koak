@@ -51,8 +51,10 @@ getVar s (Vars v) =
 compileProgramToFile :: FilePath -> CompilerConfig -> Program -> IO ()
 compileProgramToFile path cfg ast =
   withContext $ \ctx ->
-    withModuleFromAST ctx (genModule ast) $ \modir ->
-      emit (cfgFormat cfg) path modir
+    do
+      module' <- genModule ast
+      withModuleFromAST ctx module' $ \modir ->
+        emit (cfgFormat cfg) path modir
 
 emit :: OutputFormat -> FilePath -> Module -> IO ()
 emit Assembly path modir =
@@ -65,17 +67,18 @@ emit NativeObject path modir =
           writeObjectToFile target (File path) modir
       )
 
-genModule :: Program -> AST.Module
+genModule :: Program -> IO AST.Module
 genModule (Program defs) =
-  buildModule "__main_module" $ traverse_ genDef defs
+  buildModuleT "__main_module" $ traverse_ genDef defs
 
 newtype Codegen a = Codegen
-  { runCodegen :: ReaderT Vars (IRBuilderT ModuleBuilder) a
+  { runCodegen :: ReaderT Vars (IRBuilderT (ModuleBuilderT IO)) a
   }
   deriving
     ( Functor,
       Applicative,
       Monad,
+      MonadFail,
       MonadReader Vars,
       MonadIRBuilder,
       MonadModuleBuilder
@@ -84,7 +87,7 @@ newtype Codegen a = Codegen
 assign :: String -> AST.Operand -> Vars -> Vars
 assign name addr v = v {operands = HM.insert name addr (operands v)}
 
-genDef :: Definition -> ModuleBuilder AST.Operand
+genDef :: Definition -> ModuleBuilderT IO AST.Operand
 -- main special case
 genDef (DFn (Ident "main") [] rety body) =
   function (AST.mkName "__koa_main") [] LLVMType.i32 $
@@ -116,19 +119,20 @@ genBody _ _ = error "unimplemented body without expression"
 genStmt :: Stmt -> Codegen a -> Codegen a
 genStmt (SLet pat t expr) k = genStmtLet pat t expr k
 genStmt (SReturn (EConst CEmpty)) k = retVoid >> k
-genStmt (SReturn e) k = (ret =<< genExpr e) >> k
-genStmt (SExpr _) _ = error "unimplemented expression statement"
+genStmt (SReturn e) k = (maybe retVoid ret =<< genExpr e) >> k
+genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak _) _ = error "unimplemented break statement"
 
 genStmtLet :: Pattern -> Type -> Expr -> Codegen a -> Codegen a
-genStmtLet PWildcard _ expr k = genExpr expr >> k
+genStmtLet PWildcard _ e k = genExpr e >> k
+genStmtLet _ TEmpty e k = genExpr e >> k
 genStmtLet (PIdent (Ident name)) t expr k =
   do
-    expr' <- genExpr expr
+    Just expr' <- genExpr expr
     allocate name t expr' k
 genStmtLet (PMutIdent (Ident name)) t expr k =
   do
-    expr' <- genExpr expr
+    Just expr' <- genExpr expr
     allocate name t expr' k
 
 allocate :: String -> Type -> AST.Operand -> Codegen a -> Codegen a
@@ -138,17 +142,20 @@ allocate name t val k =
     store addr 0 val
     local (assign name addr) k
 
-genExpr :: Expr -> Codegen AST.Operand
+genExpr :: Expr -> Codegen (Maybe AST.Operand)
 -- literal
 genExpr (EConst lit) = pure $ genConst lit
 -- unary op
-genExpr (EUnop op e) = genExpr e >>= genUnop op
+genExpr (EUnop operator e) =
+  do
+    Just e' <- genExpr e
+    Just <$> genUnop operator e'
 -- binary op
 genExpr (EBinop op left right) =
   do
-    left' <- genExpr left
-    right' <- genExpr right
-    genBinop op left' right'
+    Just left' <- genExpr left
+    Just right' <- genExpr right
+    Just <$> genBinop op left' right'
 -- other
 genExpr (EVar t (Ident name)) = genIdent (Ident name, t)
 genExpr EBlock {} = error "unimplemented genExpr.EBlock"
@@ -173,18 +180,19 @@ genBinop OGreaterThan = icmp IPred.SGT
 genBinop OLessThanEq = icmp IPred.SLE
 genBinop OGreaterThanEq = icmp IPred.SGE
 
-genIdent :: (Ident, Type) -> Codegen AST.Operand
+genIdent :: (Ident, Type) -> Codegen (Maybe AST.Operand)
+genIdent (_, TEmpty) = pure Nothing
 genIdent (Ident name, _) =
   do
     v <- asks $ getVar name
-    load v 0
+    Just <$> load v 0
 
-genConst :: Constant -> AST.Operand
-genConst (CInt32 n) = int32 $ fromIntegral n
-genConst (CFloat64 n) = double n
-genConst (CBool True) = bit 1
-genConst (CBool False) = bit 0
-genConst CEmpty = error "can't generate empty literal"
+genConst :: Constant -> Maybe AST.Operand
+genConst (CInt32 n) = Just $ int32 $ fromIntegral n
+genConst (CFloat64 n) = Just $ double n
+genConst (CBool True) = Just $ bit 1
+genConst (CBool False) = Just $ bit 0
+genConst CEmpty = Nothing
 
 llvmType :: Type -> LLVMType.Type
 llvmType TInt32 = LLVMType.i32
