@@ -115,10 +115,9 @@ genBody stmts [] =
     doStmts (s : ss) = genStmt s $ doStmts ss
 genBody _ _ = error "unimplemented body without expression"
 
-genStmt :: Stmt -> Codegen a -> Codegen a
+genStmt :: Stmt -> Codegen () -> Codegen ()
 genStmt (SLet pat t expr) k = genStmtLet pat t expr k
-genStmt (SReturn (EConst CEmpty)) k = retVoid >> k
-genStmt (SReturn e) k = (maybe retVoid ret =<< genExpr e) >> k
+genStmt (SReturn e) _ = maybe retVoid ret =<< genExpr e
 genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak _) _ = error "unimplemented break statement"
 
