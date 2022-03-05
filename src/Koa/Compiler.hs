@@ -132,13 +132,18 @@ genArgs args = genArg <$> args
 genBody :: [Stmt] -> [AST.Operand] -> Codegen ()
 genBody stmts [] =
   block `named` "entry"
-    >> callCC (\k -> local (setRetCont $ retCont k) $ doStmts stmts)
+    >> callCC
+      ( \k ->
+          local (setRetCont $ retCont k) $
+            genAllStmts stmts $ pure ()
+      )
   where
     retCont k Nothing = retVoid >> k ()
     retCont k (Just v) = ret v >> k ()
-    doStmts [] = pure ()
-    doStmts (s : ss) = genStmt s $ doStmts ss
 genBody _ _ = error "unimplemented body without expression"
+
+genAllStmts :: [Stmt] -> Codegen a -> Codegen a
+genAllStmts ss k = foldr genStmt k ss
 
 genStmt :: Stmt -> Codegen a -> Codegen a
 genStmt (SLet pat t expr) k = genStmtLet pat t expr k
@@ -192,8 +197,7 @@ genExpr ECall {} = error "unimplemented genExpr.ECall"
 genExpr (EAssign name e) = genAssign name e
 
 genBlock :: Block -> Codegen (Maybe AST.Operand)
-genBlock (Block [] e) = genExpr e
-genBlock (Block (s : ss) e) = genStmt s $ genBlock (Block ss e)
+genBlock (Block stmts e) = genAllStmts stmts $ genExpr e
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
