@@ -144,7 +144,9 @@ def build_project() -> None:
     Build the project to avoid waiting for compilation during the tests.
     '''
     print('Build koak...')
-    subprocess.call(['stack', 'build'])
+    ret_code: int = subprocess.call(['stack', 'build'])
+    if ret_code != 0:
+        raise Exception('Build failed')
     print('Build done\n')
 
 
