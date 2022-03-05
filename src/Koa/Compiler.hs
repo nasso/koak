@@ -185,11 +185,15 @@ genExpr (EBinop op left right) =
     Just <$> genBinop op left' right'
 -- other
 genExpr (EVar t name) = genIdent name t
-genExpr EBlock {} = error "unimplemented genExpr.EBlock"
+genExpr (EBlock bl) = genBlock bl
 genExpr EIf {} = error "unimplemented genExpr.EIf"
 genExpr ELoop {} = error "unimplemented genExpr.ELoop"
 genExpr ECall {} = error "unimplemented genExpr.ECall"
 genExpr (EAssign name e) = genAssign name e
+
+genBlock :: Block -> Codegen (Maybe AST.Operand)
+genBlock (Block [] e) = genExpr e
+genBlock (Block (s : ss) e) = genStmt s $ genBlock (Block ss e)
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
