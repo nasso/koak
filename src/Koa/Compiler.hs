@@ -8,6 +8,7 @@ module Koa.Compiler
   )
 where
 
+import Control.Monad.Cont
 import Control.Monad.Reader
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
@@ -56,25 +57,43 @@ genModule :: Program -> IO AST.Module
 genModule (Program defs) =
   buildModuleT "__main_module" $ traverse_ genDef defs
 
-newtype Vars = Vars
-  { varOperands :: HashMap String AST.Operand
+data Vars = Vars
+  { varOperands :: HashMap String AST.Operand,
+    varRetCont :: Maybe AST.Operand -> Codegen ()
   }
-  deriving (Eq, Show)
 
 newVars :: Vars
-newVars = Vars HM.empty
+newVars =
+  Vars
+    { varOperands = HM.empty,
+      varRetCont = \_ -> pure ()
+    }
 
 getVar :: Ident -> Vars -> AST.Operand
-getVar (Ident i) (Vars v) =
-  case HM.lookup i v of
+getVar (Ident i) v =
+  case HM.lookup i (varOperands v) of
     Just o -> o
     Nothing -> error $ "Variable " ++ i ++ " not found"
 
 setVar :: Ident -> AST.Operand -> Vars -> Vars
 setVar (Ident i) val v = v {varOperands = HM.insert i val (varOperands v)}
 
+setRetCont :: (Maybe AST.Operand -> Codegen ()) -> Vars -> Vars
+setRetCont f v = v {varRetCont = f}
+
 newtype Codegen a = Codegen
-  { runCodegen :: ReaderT Vars (IRBuilderT (ModuleBuilderT IO)) a
+  { runCodegen ::
+      ReaderT
+        Vars
+        ( ContT
+            ()
+            ( IRBuilderT
+                ( ModuleBuilderT
+                    IO
+                )
+            )
+        )
+        a
   }
   deriving
     ( Functor,
@@ -83,6 +102,7 @@ newtype Codegen a = Codegen
       MonadFail,
       MonadReader Vars,
       MonadIRBuilder,
+      MonadCont,
       MonadModuleBuilder
     )
 
@@ -90,7 +110,8 @@ genDef :: Definition -> ModuleBuilderT IO AST.Operand
 -- main special case
 genDef (DFn (Ident "main") [] rety body) =
   function (AST.mkName "__koa_main") [] LLVMType.i32 $
-    \ops -> runReaderT (runCodegen $ bodyFor rety ops) newVars
+    \ops ->
+      runContT (runReaderT (runCodegen $ bodyFor rety ops) newVars) pure
   where
     bodyFor TInt32 ops = genBody body ops
     bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
@@ -99,7 +120,8 @@ genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
 -- normal functions
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (genArgs args) (llvmType rety) $
-    \ops -> runReaderT (runCodegen $ genBody body ops) newVars
+    \ops ->
+      runContT (runReaderT (runCodegen $ genBody body ops) newVars) pure
 
 genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
 genArgs args = genArg <$> args
@@ -109,15 +131,22 @@ genArgs args = genArg <$> args
 
 genBody :: [Stmt] -> [AST.Operand] -> Codegen ()
 genBody stmts [] =
-  block `named` "entry" >> doStmts stmts
+  block `named` "entry"
+    >> callCC (\k -> local (setRetCont $ retCont k) $ doStmts stmts)
   where
+    retCont k Nothing = retVoid >> k ()
+    retCont k (Just v) = ret v >> k ()
     doStmts [] = pure ()
     doStmts (s : ss) = genStmt s $ doStmts ss
 genBody _ _ = error "unimplemented body without expression"
 
-genStmt :: Stmt -> Codegen () -> Codegen ()
+genStmt :: Stmt -> Codegen a -> Codegen a
 genStmt (SLet pat t expr) k = genStmtLet pat t expr k
-genStmt (SReturn e) _ = maybe retVoid ret =<< genExpr e
+genStmt (SReturn e) k =
+  do
+    e' <- genExpr e
+    retCont <- asks varRetCont
+    retCont e' >> k
 genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak _) _ = error "unimplemented break statement"
 
