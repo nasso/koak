@@ -155,12 +155,12 @@ genExpr (EBinop op left right) =
     Just right' <- genExpr right
     Just <$> genBinop op left' right'
 -- other
-genExpr (EVar t (Ident name)) = genIdent (Ident name, t)
+genExpr (EVar t name) = genIdent name t
 genExpr EBlock {} = error "unimplemented genExpr.EBlock"
 genExpr EIf {} = error "unimplemented genExpr.EIf"
 genExpr ELoop {} = error "unimplemented genExpr.ELoop"
 genExpr ECall {} = error "unimplemented genExpr.ECall"
-genExpr EAssign {} = error "unimplemented genExpr.EAssign"
+genExpr (EAssign name e) = genAssign name e
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
@@ -178,12 +178,22 @@ genBinop OGreaterThan = icmp IPred.SGT
 genBinop OLessThanEq = icmp IPred.SLE
 genBinop OGreaterThanEq = icmp IPred.SGE
 
-genIdent :: (Ident, Type) -> Codegen (Maybe AST.Operand)
-genIdent (_, TEmpty) = pure Nothing
-genIdent (name, _) =
+genIdent :: Ident -> Type -> Codegen (Maybe AST.Operand)
+genIdent _ TEmpty = pure Nothing
+genIdent name _ =
   do
     v <- asks $ getVar name
     Just <$> load v 0
+
+genAssign :: Ident -> Expr -> Codegen (Maybe AST.Operand)
+genAssign name e =
+  do
+    e' <- genExpr e
+    forM_ e' $ \e'' ->
+      do
+        v <- asks $ getVar name
+        store v 0 e''
+    pure e'
 
 llvmConst :: Constant -> Maybe AST.Operand
 llvmConst (CInt32 n) = Just $ int32 $ fromIntegral n
