@@ -8,6 +8,7 @@ module Koa.Compiler
   )
 where
 
+import Control.Monad.Cont
 import Control.Monad.Reader
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
@@ -56,33 +57,52 @@ genModule :: Program -> IO AST.Module
 genModule (Program defs) =
   buildModuleT "__main_module" $ traverse_ genDef defs
 
-newtype Vars = Vars
-  { varOperands :: HashMap String AST.Operand
+data Scope = Scope
+  { scpVars :: HashMap String AST.Operand,
+    scpRetCont :: Maybe AST.Operand -> Codegen ()
   }
-  deriving (Eq, Show)
 
-newVars :: Vars
-newVars = Vars HM.empty
+newScope :: Scope
+newScope =
+  Scope
+    { scpVars = HM.empty,
+      scpRetCont = \_ -> pure ()
+    }
 
-getVar :: Ident -> Vars -> AST.Operand
-getVar (Ident i) (Vars v) =
-  case HM.lookup i v of
+getVar :: Ident -> Scope -> AST.Operand
+getVar (Ident i) v =
+  case HM.lookup i (scpVars v) of
     Just o -> o
     Nothing -> error $ "Variable " ++ i ++ " not found"
 
-setVar :: Ident -> AST.Operand -> Vars -> Vars
-setVar (Ident i) val v = v {varOperands = HM.insert i val (varOperands v)}
+setVar :: Ident -> AST.Operand -> Scope -> Scope
+setVar (Ident i) val v = v {scpVars = HM.insert i val (scpVars v)}
+
+setRetCont :: (Maybe AST.Operand -> Codegen ()) -> Scope -> Scope
+setRetCont f v = v {scpRetCont = f}
 
 newtype Codegen a = Codegen
-  { runCodegen :: ReaderT Vars (IRBuilderT (ModuleBuilderT IO)) a
+  { runCodegen ::
+      ReaderT
+        Scope
+        ( ContT
+            ()
+            ( IRBuilderT
+                ( ModuleBuilderT
+                    IO
+                )
+            )
+        )
+        a
   }
   deriving
     ( Functor,
       Applicative,
       Monad,
       MonadFail,
-      MonadReader Vars,
+      MonadReader Scope,
       MonadIRBuilder,
+      MonadCont,
       MonadModuleBuilder
     )
 
@@ -90,7 +110,8 @@ genDef :: Definition -> ModuleBuilderT IO AST.Operand
 -- main special case
 genDef (DFn (Ident "main") [] rety body) =
   function (AST.mkName "__koa_main") [] LLVMType.i32 $
-    \ops -> runReaderT (runCodegen $ bodyFor rety ops) newVars
+    \ops ->
+      runContT (runReaderT (runCodegen $ bodyFor rety ops) newScope) pure
   where
     bodyFor TInt32 ops = genBody body ops
     bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
@@ -99,7 +120,8 @@ genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
 -- normal functions
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (genArgs args) (llvmType rety) $
-    \ops -> runReaderT (runCodegen $ genBody body ops) newVars
+    \ops ->
+      runContT (runReaderT (runCodegen $ genBody body ops) newScope) pure
 
 genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
 genArgs args = genArg <$> args
@@ -109,15 +131,22 @@ genArgs args = genArg <$> args
 
 genBody :: [Stmt] -> [AST.Operand] -> Codegen ()
 genBody stmts [] =
-  block `named` "entry" >> doStmts stmts
+  block `named` "entry"
+    >> callCC (\k -> local (setRetCont $ retCont k) $ doStmts stmts)
   where
+    retCont k Nothing = retVoid >> k ()
+    retCont k (Just v) = ret v >> k ()
     doStmts [] = pure ()
     doStmts (s : ss) = genStmt s $ doStmts ss
 genBody _ _ = error "unimplemented body without expression"
 
-genStmt :: Stmt -> Codegen () -> Codegen ()
+genStmt :: Stmt -> Codegen a -> Codegen a
 genStmt (SLet pat t expr) k = genStmtLet pat t expr k
-genStmt (SReturn e) _ = maybe retVoid ret =<< genExpr e
+genStmt (SReturn e) k =
+  do
+    e' <- genExpr e
+    retCont <- asks scpRetCont
+    retCont e' >> k
 genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak _) _ = error "unimplemented break statement"
 
@@ -156,11 +185,15 @@ genExpr (EBinop op left right) =
     Just <$> genBinop op left' right'
 -- other
 genExpr (EVar t name) = genIdent name t
-genExpr EBlock {} = error "unimplemented genExpr.EBlock"
+genExpr (EBlock bl) = genBlock bl
 genExpr EIf {} = error "unimplemented genExpr.EIf"
 genExpr ELoop {} = error "unimplemented genExpr.ELoop"
 genExpr ECall {} = error "unimplemented genExpr.ECall"
 genExpr (EAssign name e) = genAssign name e
+
+genBlock :: Block -> Codegen (Maybe AST.Operand)
+genBlock (Block [] e) = genExpr e
+genBlock (Block (s : ss) e) = genStmt s $ genBlock (Block ss e)
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
