@@ -8,7 +8,6 @@ module Koa.Compiler
   )
 where
 
-import Control.Monad.Cont
 import Control.Monad.Reader
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
@@ -57,16 +56,14 @@ genModule :: Program -> IO AST.Module
 genModule (Program defs) =
   buildModuleT "__main_module" $ traverse_ genDef defs
 
-data Scope = Scope
-  { scpVars :: HashMap String AST.Operand,
-    scpRetCont :: Maybe AST.Operand -> Codegen ()
+newtype Scope = Scope
+  { scpVars :: HashMap String AST.Operand
   }
 
 newScope :: Scope
 newScope =
   Scope
-    { scpVars = HM.empty,
-      scpRetCont = \_ -> pure ()
+    { scpVars = HM.empty
     }
 
 getVar :: Ident -> Scope -> AST.Operand
@@ -78,19 +75,13 @@ getVar (Ident i) v =
 setVar :: Ident -> AST.Operand -> Scope -> Scope
 setVar (Ident i) val v = v {scpVars = HM.insert i val (scpVars v)}
 
-setRetCont :: (Maybe AST.Operand -> Codegen ()) -> Scope -> Scope
-setRetCont f v = v {scpRetCont = f}
-
 newtype Codegen a = Codegen
   { runCodegen ::
       ReaderT
         Scope
-        ( ContT
-            ()
-            ( IRBuilderT
-                ( ModuleBuilderT
-                    IO
-                )
+        ( IRBuilderT
+            ( ModuleBuilderT
+                IO
             )
         )
         a
@@ -102,16 +93,24 @@ newtype Codegen a = Codegen
       MonadFail,
       MonadReader Scope,
       MonadIRBuilder,
-      MonadCont,
       MonadModuleBuilder
     )
+
+mkTerminator :: Codegen () -> Codegen ()
+mkTerminator t =
+  do
+    blockTerminated <- hasTerminator
+    unless blockTerminated t
+
+return' :: Maybe AST.Operand -> Codegen ()
+return' Nothing = mkTerminator retVoid
+return' (Just v) = mkTerminator (ret v)
 
 genDef :: Definition -> ModuleBuilderT IO AST.Operand
 -- main special case
 genDef (DFn (Ident "main") [] rety body) =
   function (AST.mkName "__koa_main") [] LLVMType.i32 $
-    \ops ->
-      runContT (runReaderT (runCodegen $ bodyFor rety ops) newScope) pure
+    \ops -> runReaderT (runCodegen $ bodyFor rety ops) newScope
   where
     bodyFor TInt32 ops = genBody body ops
     bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
@@ -120,8 +119,7 @@ genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
 -- normal functions
 genDef (DFn (Ident name) args rety body) =
   function (AST.mkName name) (genArgs args) (llvmType rety) $
-    \ops ->
-      runContT (runReaderT (runCodegen $ genBody body ops) newScope) pure
+    \ops -> runReaderT (runCodegen $ genBody body ops) newScope
 
 genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
 genArgs args = genArg <$> args
@@ -130,28 +128,15 @@ genArgs args = genArg <$> args
       (llvmType ptype, ParameterName $ fromString pname)
 
 genBody :: [Stmt] -> [AST.Operand] -> Codegen ()
-genBody stmts [] =
-  block `named` "entry"
-    >> callCC
-      ( \k ->
-          local (setRetCont $ retCont k) $
-            genAllStmts stmts $ pure ()
-      )
-  where
-    retCont k Nothing = retVoid >> k ()
-    retCont k (Just v) = ret v >> k ()
-genBody _ _ = error "unimplemented body without expression"
+genBody stmts [] = block `named` "entry" >> genAllStmts stmts (pure ())
+genBody _ _ = error "unimplemented body with arguments"
 
 genAllStmts :: [Stmt] -> Codegen a -> Codegen a
 genAllStmts ss k = foldr genStmt k ss
 
 genStmt :: Stmt -> Codegen a -> Codegen a
 genStmt (SLet pat t expr) k = genStmtLet pat t expr k
-genStmt (SReturn e) k =
-  do
-    e' <- genExpr e
-    retCont <- asks scpRetCont
-    retCont e' >> k
+genStmt (SReturn e) k = (return' =<< genExpr e) >> k
 genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak _) _ = error "unimplemented break statement"
 
