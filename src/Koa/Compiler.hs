@@ -190,14 +190,11 @@ genAssign :: Ident -> Expr -> Codegen (Maybe AST.Operand)
 genAssign name e =
   do
     e' <- genExpr e
-    v <- asks $ getVar name
-    assignVar v e'
-
-assignVar :: AST.Operand -> Maybe AST.Operand -> Codegen (Maybe AST.Operand)
-assignVar _ Nothing = pure Nothing
-assignVar v (Just e) = do
-  store v 0 e
-  pure $ Just e
+    forM_ e' $ \e'' ->
+      do
+        v <- asks $ getVar name
+        store v 0 e''
+    pure e'
 
 llvmConst :: Constant -> Maybe AST.Operand
 llvmConst (CInt32 n) = Just $ int32 $ fromIntegral n
