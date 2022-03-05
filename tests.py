@@ -91,7 +91,7 @@ def run_test(source_path: str) -> tuple[bool, str]:
         exp_exit_code = 0
         if os.path.exists(exit_code_path):
             with open(exit_code_path, 'r') as f:
-                exp_exit_code = int(f.read())
+                exp_exit_code = int(f.read()) & 0xFF
 
         # check exit code
         if got_exit_code != exp_exit_code:
