@@ -40,7 +40,7 @@ binding name (HIR.TBinding pat ty) =
   do
     ty' <- type' ty
     pat' <- pattern' pat
-    pure (ty', MIR.SLet pat' $ MIR.EVar ty' name)
+    pure (ty', MIR.SLet pat' ty' $ MIR.EVar ty' name)
 
 pattern' :: HIR.Pattern -> Analyser MIR.Pattern
 pattern' HIR.PWildcard = pure MIR.PWildcard
@@ -56,7 +56,8 @@ type' HIR.TFloat64 = pure MIR.TFloat64
 stmt :: HIR.StmtT -> Analyser MIR.Stmt
 stmt (HIR.SExpr e) = MIR.SExpr <$> expr e
 stmt (HIR.SReturn e) = MIR.SReturn <$> expr e
-stmt (HIR.SLet pat _ e) = MIR.SLet <$> pattern' pat <*> expr e
+stmt (HIR.SLet pat _ e@(HIR.ExprT (_, ty))) =
+  MIR.SLet <$> pattern' pat <*> type' ty <*> expr e
 
 expr :: HIR.ExprT -> Analyser MIR.Expr
 expr (HIR.ExprT (HIR.EBlock b, _)) = MIR.EBlock <$> block b

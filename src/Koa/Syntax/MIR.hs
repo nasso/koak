@@ -18,7 +18,7 @@ data Stmt
   = SExpr Expr
   | SReturn Expr
   | SBreak Expr
-  | SLet Pattern Expr
+  | SLet Pattern Type Expr
   deriving (Eq, Show)
 
 -- | A pattern (used by @let@ statements).
