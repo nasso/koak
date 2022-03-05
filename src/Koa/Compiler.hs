@@ -22,6 +22,8 @@ import LLVM.IRBuilder
 import LLVM.Module
 import LLVM.Target
 import System.Directory
+import qualified Control.Monad as LLVM
+import Data.Maybe (fromMaybe)
 
 -- | Configuration for the compiler.
 newtype CompilerConfig = CompilerConfig
@@ -189,11 +191,15 @@ genIdent name _ =
 genAssign :: Ident -> Expr -> Codegen (Maybe AST.Operand)
 genAssign name e =
   do
-    Just e' <- genExpr e
+    e' <- genExpr e
     v <- asks $ getVar name
-    store v 0 e'
-    pure $ Just e'
-    
+    assignVar v e'
+
+assignVar :: AST.Operand -> Maybe AST.Operand -> Codegen (Maybe AST.Operand)
+assignVar _ Nothing = pure Nothing
+assignVar v (Just e) = do
+  store v 0 e
+  pure $ Just e
 
 llvmConst :: Constant -> Maybe AST.Operand
 llvmConst (CInt32 n) = Just $ int32 $ fromIntegral n
