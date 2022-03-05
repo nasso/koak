@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Koa.Compiler
@@ -7,7 +8,11 @@ module Koa.Compiler
   )
 where
 
+import Control.Monad.Reader
 import Data.Foldable
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HM
+import Data.String (IsString (fromString))
 import Koa.Syntax.MIR
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.IntegerPredicate as IPred
@@ -31,8 +36,10 @@ data OutputFormat = Assembly | NativeObject deriving (Show, Eq)
 compileProgramToFile :: FilePath -> CompilerConfig -> Program -> IO ()
 compileProgramToFile path cfg ast =
   withContext $ \ctx ->
-    withModuleFromAST ctx (genModule ast) $ \modir ->
-      emit (cfgFormat cfg) path modir
+    do
+      module' <- genModule ast
+      withModuleFromAST ctx module' $ \modir ->
+        emit (cfgFormat cfg) path modir
 
 emit :: OutputFormat -> FilePath -> Module -> IO ()
 emit Assembly path modir =
@@ -45,72 +52,122 @@ emit NativeObject path modir =
           writeObjectToFile target (File path) modir
       )
 
-genModule :: Program -> AST.Module
+genModule :: Program -> IO AST.Module
 genModule (Program defs) =
-  buildModule "__main_module" $ traverse_ genDef defs
+  buildModuleT "__main_module" $ traverse_ genDef defs
 
-genDef :: MonadModuleBuilder m => Definition -> m AST.Operand
+newtype Vars = Vars
+  { varOperands :: HashMap String AST.Operand
+  }
+  deriving (Eq, Show)
+
+newVars :: Vars
+newVars = Vars HM.empty
+
+getVar :: Ident -> Vars -> AST.Operand
+getVar (Ident i) (Vars v) =
+  case HM.lookup i v of
+    Just o -> o
+    Nothing -> error $ "Variable " ++ i ++ " not found"
+
+setVar :: Ident -> AST.Operand -> Vars -> Vars
+setVar (Ident i) val v = v {varOperands = HM.insert i val (varOperands v)}
+
+newtype Codegen a = Codegen
+  { runCodegen :: ReaderT Vars (IRBuilderT (ModuleBuilderT IO)) a
+  }
+  deriving
+    ( Functor,
+      Applicative,
+      Monad,
+      MonadFail,
+      MonadReader Vars,
+      MonadIRBuilder,
+      MonadModuleBuilder
+    )
+
+genDef :: Definition -> ModuleBuilderT IO AST.Operand
 -- main special case
-genDef (DFn (Ident "main") [] TInt32 body) =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $ genBody body
-genDef (DFn (Ident "main") [] TEmpty body) =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $ \ops ->
-    genBody body ops <* ret (int32 0)
-genDef (DFn (Ident "main") [] _ _) =
-  error "`main` can only return empty or i32"
-genDef (DFn (Ident "main") _ _ _) =
-  error "`main` must have no arguments"
+genDef (DFn (Ident "main") [] rety body) =
+  function (AST.mkName "__koa_main") [] LLVMType.i32 $
+    \ops -> runReaderT (runCodegen $ bodyFor rety ops) newVars
+  where
+    bodyFor TInt32 ops = genBody body ops
+    bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
+    bodyFor _ _ = error "`main` can only return empty or i32"
+genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
 -- normal functions
 genDef (DFn (Ident name) args rety body) =
-  function (AST.mkName name) (arg <$> args) (llvmType rety) $ genBody body
+  function (AST.mkName name) (genArgs args) (llvmType rety) $
+    \ops -> runReaderT (runCodegen $ genBody body ops) newVars
+
+genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
+genArgs args = genArg <$> args
   where
-    arg = error "unimplemented genDef.arg"
+    genArg (Ident pname, ptype) =
+      (llvmType ptype, ParameterName $ fromString pname)
 
-genBody :: MonadIRBuilder m => [Stmt] -> [AST.Operand] -> m ()
-genBody [SReturn expr@(EConst CEmpty)] [] =
-  do
-    _ <- block `named` "entry"
-    _ <- genExpr expr
-    retVoid
-genBody [SReturn expr] [] =
-  do
-    _ <- block `named` "entry"
-    res <- genExpr expr
-    ret res
-genBody _ _ = error "unimplemented genBody for statements"
+genBody :: [Stmt] -> [AST.Operand] -> Codegen ()
+genBody stmts [] =
+  block `named` "entry" >> doStmts stmts
+  where
+    doStmts [] = pure ()
+    doStmts (s : ss) = genStmt s $ doStmts ss
+genBody _ _ = error "unimplemented body without expression"
 
-genExpr :: MonadIRBuilder m => Expr -> m AST.Operand
+genStmt :: Stmt -> Codegen a -> Codegen a
+genStmt (SLet pat t expr) k = genStmtLet pat t expr k
+genStmt (SReturn (EConst CEmpty)) k = retVoid >> k
+genStmt (SReturn e) k = (maybe retVoid ret =<< genExpr e) >> k
+genStmt (SExpr e) k = genExpr e >> k
+genStmt (SBreak _) _ = error "unimplemented break statement"
+
+genStmtLet :: Pattern -> Type -> Expr -> Codegen a -> Codegen a
+genStmtLet PWildcard _ e k = genExpr e >> k
+genStmtLet _ TEmpty e k = genExpr e >> k
+genStmtLet (PIdent name) t expr k =
+  do
+    Just expr' <- genExpr expr
+    allocate name t expr' k
+genStmtLet (PMutIdent name) t expr k =
+  do
+    Just expr' <- genExpr expr
+    allocate name t expr' k
+
+allocate :: Ident -> Type -> AST.Operand -> Codegen a -> Codegen a
+allocate name t val k =
+  do
+    addr <- alloca (llvmType t) (Just val) 0
+    store addr 0 val
+    local (setVar name addr) k
+
+genExpr :: Expr -> Codegen (Maybe AST.Operand)
 -- literal
-genExpr (EConst lit) = pure $ genConst lit
+genExpr (EConst c) = pure $ llvmConst c
 -- unary op
-genExpr (EUnop op e) =
+genExpr (EUnop operator e) =
   do
-    e' <- genExpr e
-    genUnop op e'
+    Just e' <- genExpr e
+    Just <$> genUnop operator e'
 -- binary op
 genExpr (EBinop op left right) =
   do
-    left' <- genExpr left
-    right' <- genExpr right
-    genBinop op left' right'
+    Just left' <- genExpr left
+    Just right' <- genExpr right
+    Just <$> genBinop op left' right'
 -- other
-genExpr EVar {} = error "unimplemented genExpr.EVar"
+genExpr (EVar t (Ident name)) = genIdent (Ident name, t)
 genExpr EBlock {} = error "unimplemented genExpr.EBlock"
 genExpr EIf {} = error "unimplemented genExpr.EIf"
 genExpr ELoop {} = error "unimplemented genExpr.ELoop"
 genExpr ECall {} = error "unimplemented genExpr.ECall"
 genExpr EAssign {} = error "unimplemented genExpr.EAssign"
 
-genUnop :: MonadIRBuilder m => Unop -> AST.Operand -> m AST.Operand
+genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
 genUnop _ = error "unimplemented genUnop'"
 
-genBinop ::
-  MonadIRBuilder m =>
-  Binop ->
-  AST.Operand ->
-  AST.Operand ->
-  m AST.Operand
+genBinop :: Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
 genBinop OAdd = add
 genBinop OSub = sub
 genBinop OMul = mul
@@ -122,12 +179,19 @@ genBinop OGreaterThan = icmp IPred.SGT
 genBinop OLessThanEq = icmp IPred.SLE
 genBinop OGreaterThanEq = icmp IPred.SGE
 
-genConst :: Constant -> AST.Operand
-genConst (CInt32 n) = int32 $ fromIntegral n
-genConst (CFloat64 n) = double n
-genConst (CBool True) = bit 1
-genConst (CBool False) = bit 0
-genConst CEmpty = error "can't generate empty literal"
+genIdent :: (Ident, Type) -> Codegen (Maybe AST.Operand)
+genIdent (_, TEmpty) = pure Nothing
+genIdent (name, _) =
+  do
+    v <- asks $ getVar name
+    Just <$> load v 0
+
+llvmConst :: Constant -> Maybe AST.Operand
+llvmConst (CInt32 n) = Just $ int32 $ fromIntegral n
+llvmConst (CFloat64 n) = Just $ double n
+llvmConst (CBool True) = Just $ bit 1
+llvmConst (CBool False) = Just $ bit 0
+llvmConst CEmpty = Nothing
 
 llvmType :: Type -> LLVMType.Type
 llvmType TInt32 = LLVMType.i32
