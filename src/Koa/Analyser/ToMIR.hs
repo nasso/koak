@@ -71,9 +71,12 @@ expr (HIR.ExprT (HIR.ECall name args, _)) =
   MIR.ECall <$> ident name <*> mapM expr args
 expr (HIR.ExprT (HIR.EAssign name e, _)) = MIR.EAssign <$> ident name <*> expr e
 expr (HIR.ExprT (HIR.EBinop op lhs rhs, _)) =
-  MIR.EBinop <$> binop op <*> expr lhs <*> expr rhs
+  MIR.EBinop <$> typeOf lhs <*> binop op <*> expr lhs <*> expr rhs
 expr (HIR.ExprT (HIR.EUnop op e, _)) = MIR.EUnop <$> unop op <*> expr e
 expr (HIR.ExprT (HIR.ELit lit, ty)) = MIR.EConst <$> lit' ty lit
+
+typeOf :: HIR.ExprT -> Analyser MIR.Type
+typeOf (HIR.ExprT (_, ty)) = type' ty
 
 lit' :: HIR.Type -> HIR.Literal -> Analyser MIR.Constant
 lit' HIR.TInt32 (HIR.LInt n) = pure $ MIR.CInt32 $ fromIntegral n

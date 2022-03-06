@@ -1,0 +1,13 @@
+fn main(): i32 {
+  let a = 1.0;
+  let b = 2.0;
+
+  let c = a + b;
+  let d = c / 2.0;
+
+  if d > 1.0 {
+    0
+  } else {
+    1
+  }
+}

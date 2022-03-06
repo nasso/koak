@@ -39,7 +39,7 @@ data Expr
   | ELoop Block
   | ECall Ident [Expr]
   | EAssign Ident Expr
-  | EBinop Binop Expr Expr
+  | EBinop Type Binop Expr Expr
   | EUnop Unop Expr
   | EConst Constant
   deriving (Eq, Show)
