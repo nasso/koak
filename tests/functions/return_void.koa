@@ -1,0 +1,6 @@
+fn main() {
+  nothing();
+  nothing()
+}
+
+fn nothing() {}
