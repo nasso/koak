@@ -17,6 +17,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.String (IsString (fromString))
 import Koa.Syntax.MIR
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.Constant as ASTC
 import qualified LLVM.AST.IntegerPredicate as IPred
 import qualified LLVM.AST.Type as LLVMType
 import LLVM.Context
@@ -56,7 +57,12 @@ emit NativeObject path modir =
 
 genModule :: Program -> IO AST.Module
 genModule (Program defs) =
-  buildModuleT "__main_module" $ traverse_ genDef defs
+  runReaderT
+    (buildModuleT "__main_module" $ runModgen $ genRecDefs defs)
+    newScope
+
+mangled :: Ident -> AST.Name
+mangled (Ident name) = AST.mkName $ "__koa_" <> name
 
 data Scope = Scope
   { scpVars :: HashMap String AST.Operand,
@@ -79,19 +85,63 @@ getVar (Ident i) v =
 setVar :: Ident -> AST.Operand -> Scope -> Scope
 setVar (Ident i) val v = v {scpVars = HM.insert i val (scpVars v)}
 
+setAllVars :: Foldable f => f (Ident, AST.Operand) -> Scope -> Scope
+setAllVars vars v = foldl (\v' (i, o) -> setVar i o v') v vars
+
 setBreakDest :: AST.Name -> Scope -> Scope
 setBreakDest dest v = v {scpBreakDest = Just dest}
 
-newtype Codegen a = Codegen
-  { runCodegen ::
-      ReaderT
-        Scope
-        ( IRBuilderT
-            ( ModuleBuilderT
-                IO
-            )
+newtype Modgen a = Modgen
+  { runModgen ::
+      ModuleBuilderT
+        ( ReaderT
+            Scope
+            IO
         )
         a
+  }
+  deriving
+    ( Functor,
+      Applicative,
+      Monad,
+      MonadFix,
+      MonadFail,
+      MonadReader Scope,
+      MonadModuleBuilder
+    )
+
+genRecDefs :: [Definition] -> Modgen ()
+genRecDefs defs =
+  local (setAllVars bindings) $ traverse_ genDef defs
+  where
+    names = [n | DFn n _ _ _ <- defs]
+    bindings = zip names functions
+    functions = refTo <$> defs
+
+refTo :: Definition -> AST.Operand
+refTo (DFn name args rety _) =
+  AST.ConstantOperand $ ASTC.GlobalReference funty (mangled name)
+  where
+    funty = LLVMType.ptr $ LLVMType.FunctionType (llvmType rety) argtys False
+    argtys = llvmType . snd <$> args
+
+genDef :: Definition -> Modgen AST.Operand
+-- main special case
+genDef (DFn name@(Ident "main") [] rety body) =
+  function (mangled name) [] LLVMType.i32 $
+    \ops -> runCodegen $ bodyFor rety ops
+  where
+    bodyFor TInt32 ops = genBody body ops
+    bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
+    bodyFor _ _ = error "`main` can only return empty or i32"
+genDef (DFn (Ident "main") _ _ _) = error "`main` must take no parameter"
+-- normal functions
+genDef (DFn name args rety body) =
+  function (mangled name) (genArgs args) (llvmType rety) $
+    \ops -> runCodegen $ genBody body ops
+
+newtype Codegen a = Codegen
+  { runCodegen :: IRBuilderT Modgen a
   }
   deriving
     ( Functor,
@@ -116,21 +166,6 @@ return' (Just v) = mkTerminator (ret v)
 
 br' :: AST.Name -> Codegen ()
 br' = mkTerminator . br
-
-genDef :: Definition -> ModuleBuilderT IO AST.Operand
--- main special case
-genDef (DFn (Ident "main") [] rety body) =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $
-    \ops -> runReaderT (runCodegen $ bodyFor rety ops) newScope
-  where
-    bodyFor TInt32 ops = genBody body ops
-    bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
-    bodyFor _ _ = error "`main` can only return empty or i32"
-genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
--- normal functions
-genDef (DFn (Ident name) args rety body) =
-  function (AST.mkName name) (genArgs args) (llvmType rety) $
-    \ops -> runReaderT (runCodegen $ genBody body ops) newScope
 
 genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
 genArgs args = genArg <$> args
@@ -210,7 +245,11 @@ genExpr (ELoop bl) =
     case loopVal of
       Nothing -> pure Nothing
       Just _ -> error "unimplemented loop with non-void break"
-genExpr ECall {} = error "unimplemented genExpr.ECall"
+genExpr (ECall name []) =
+  do
+    f <- asks $ getVar name
+    Just <$> call f []
+genExpr (ECall _ _) = error "unimplemented call with arguments"
 genExpr (EAssign name e) = genAssign name e
 
 genBlock :: ShortByteString -> Block -> Codegen (AST.Name, Maybe AST.Operand)
