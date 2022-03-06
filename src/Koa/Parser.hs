@@ -88,9 +88,19 @@ letStmt =
   SLet
     <$> (symbol "let" *> pattern') <*> optional letType <*> (symbol "=" *> expr)
 
+returnStmt :: CharParser p => p Stmt
+returnStmt =
+  SReturn
+    <$> ( symbol "return"
+            *> ( expr
+                   <|> pure (Expr (ELit LEmpty))
+               )
+            <* symbol ";"
+        )
+
 stmt :: CharParser p => p Stmt
 stmt =
-  SReturn <$> (symbol "return" *> expr <* symbol ";")
+  returnStmt
     <|> letStmt <* symbol ";"
     <|> SExpr <$> expr <* symbol ";"
 

@@ -156,6 +156,18 @@ valid =
                   Nothing
               )
           ],
+    testCase "return statement returning nothing" $
+      assertProgram "fn f(): () { return; }\n" $
+        Program
+          [ DFn
+              (Ident "f")
+              []
+              TEmpty
+              ( BExpr
+                  [SReturn litEmpty]
+                  Nothing
+              )
+          ],
     testCase "return statement returning void twice" $
       assertProgram "fn f(): () { return (); return (); }\n" $
         Program
