@@ -209,7 +209,7 @@ genInlineBlock (Block stmts e) = genAllStmts stmts (genExpr e)
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
-genUnop _ = error "unimplemented genUnop'"
+genUnop ONot = icmp IPred.EQ (bit 0)
 
 genBinop :: Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
 genBinop OAdd = add
