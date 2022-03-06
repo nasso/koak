@@ -277,24 +277,24 @@ genUnop ONot = icmp ASTIP.EQ (bit 0)
 
 genBinop :: Type -> Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
 genBinop TInt32 OAdd = add
-genBinop TFloat64 OAdd = fadd
 genBinop TInt32 OSub = sub
-genBinop TFloat64 OSub = fsub
 genBinop TInt32 OMul = mul
-genBinop TFloat64 OMul = fmul
 genBinop TInt32 ODiv = sdiv
-genBinop TFloat64 ODiv = fdiv
 genBinop TInt32 OEquals = icmp ASTIP.EQ
-genBinop TFloat64 OEquals = fcmp ASTFP.OEQ
 genBinop TInt32 ONotEquals = icmp ASTIP.NE
-genBinop TFloat64 ONotEquals = fcmp ASTFP.ONE
 genBinop TInt32 OLessThan = icmp ASTIP.SLT
-genBinop TFloat64 OLessThan = fcmp ASTFP.OLT
 genBinop TInt32 OGreaterThan = icmp ASTIP.SGT
-genBinop TFloat64 OGreaterThan = fcmp ASTFP.OGT
 genBinop TInt32 OLessThanEq = icmp ASTIP.SLE
-genBinop TFloat64 OLessThanEq = fcmp ASTFP.OLE
 genBinop TInt32 OGreaterThanEq = icmp ASTIP.SGE
+genBinop TFloat64 OAdd = fadd
+genBinop TFloat64 OSub = fsub
+genBinop TFloat64 OMul = fmul
+genBinop TFloat64 ODiv = fdiv
+genBinop TFloat64 OEquals = fcmp ASTFP.OEQ
+genBinop TFloat64 ONotEquals = fcmp ASTFP.ONE
+genBinop TFloat64 OLessThan = fcmp ASTFP.OLT
+genBinop TFloat64 OGreaterThan = fcmp ASTFP.OGT
+genBinop TFloat64 OLessThanEq = fcmp ASTFP.OLE
 genBinop TFloat64 OGreaterThanEq = fcmp ASTFP.OGE
 genBinop ty op = error $ "unimplemented binop: " ++ show ty ++ " " ++ show op
 
