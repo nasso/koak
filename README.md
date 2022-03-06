@@ -2,6 +2,10 @@
 
 [![Tests](https://github.com/nasso/koak/actions/workflows/tests.yml/badge.svg)](https://github.com/nasso/koak/actions/workflows/tests.yml)
 
+## Usage
+
+See the [Wiki on GitHub](https://github.com/nasso/koak/wiki).
+
 ## Building
 
 Make sure you have the development packages for LLVM 9 installed (e.g.
