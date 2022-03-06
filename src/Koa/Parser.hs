@@ -42,9 +42,12 @@ definition :: CharParser p => p Definition
 definition =
   DFn
     <$> (symbol "fn" >> ident)
-    <*> parens (pure [])
+    <*> parens (sepBy typedPatternBinding $ symbol ",")
     <*> ((symbol ":" >> type') <|> pure TEmpty)
     <*> block
+
+typedPatternBinding :: CharParser p => p TBinding
+typedPatternBinding = TBinding <$> pattern' <*> (symbol ":" >> type')
 
 type' :: CharParser p => p Type
 type' =

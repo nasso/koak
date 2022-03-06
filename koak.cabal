@@ -98,6 +98,7 @@ test-suite koak-test
       Test.Koa.Parser
       Test.Koa.Parser.Assignment
       Test.Koa.Parser.Binop
+      Test.Koa.Parser.Functions
       Test.Koa.Parser.Let
       Test.Koa.Parser.Loop
       Test.Koa.Parser.Returns
