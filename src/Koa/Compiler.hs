@@ -14,11 +14,13 @@ import Data.ByteString.Short (ShortByteString)
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe
 import Data.String (IsString (fromString))
 import Koa.Syntax.MIR
 import qualified LLVM.AST as AST
-import qualified LLVM.AST.IntegerPredicate as IPred
-import qualified LLVM.AST.Type as LLVMType
+import qualified LLVM.AST.Constant as ASTC
+import qualified LLVM.AST.IntegerPredicate as ASTIP
+import qualified LLVM.AST.Type as ASTT
 import LLVM.Context
 import LLVM.IRBuilder
 import LLVM.Module
@@ -56,7 +58,17 @@ emit NativeObject path modir =
 
 genModule :: Program -> IO AST.Module
 genModule (Program defs) =
-  buildModuleT "__main_module" $ traverse_ genDef defs
+  runReaderT
+    (buildModuleT "__main_module" $ runModgen $ genRecDefs defs)
+    newScope
+
+mangled :: Ident -> AST.Name
+mangled (Ident name) = AST.mkName $ "__koa_" <> name
+
+patName :: IsString p => Pattern -> p
+patName (PIdent (Ident n)) = fromString n
+patName (PMutIdent (Ident n)) = fromString n
+patName PWildcard = fromString "unused_parameter"
 
 data Scope = Scope
   { scpVars :: HashMap String AST.Operand,
@@ -79,19 +91,66 @@ getVar (Ident i) v =
 setVar :: Ident -> AST.Operand -> Scope -> Scope
 setVar (Ident i) val v = v {scpVars = HM.insert i val (scpVars v)}
 
+setAllVars :: Foldable f => f (Ident, AST.Operand) -> Scope -> Scope
+setAllVars vars v = foldl (\v' (i, o) -> setVar i o v') v vars
+
 setBreakDest :: AST.Name -> Scope -> Scope
 setBreakDest dest v = v {scpBreakDest = Just dest}
 
-newtype Codegen a = Codegen
-  { runCodegen ::
-      ReaderT
-        Scope
-        ( IRBuilderT
-            ( ModuleBuilderT
-                IO
-            )
+newtype Modgen a = Modgen
+  { runModgen ::
+      ModuleBuilderT
+        ( ReaderT
+            Scope
+            IO
         )
         a
+  }
+  deriving
+    ( Functor,
+      Applicative,
+      Monad,
+      MonadFix,
+      MonadFail,
+      MonadReader Scope,
+      MonadModuleBuilder
+    )
+
+genRecDefs :: [Definition] -> Modgen ()
+genRecDefs defs =
+  local (setAllVars bindings) $ traverse_ genDef defs
+  where
+    names = [n | DFn n _ _ _ <- defs]
+    bindings = zip names functions
+    functions = refTo <$> defs
+
+refTo :: Definition -> AST.Operand
+refTo (DFn name args rety _) =
+  AST.ConstantOperand $ ASTC.GlobalReference funty (mangled name)
+  where
+    funty = ASTT.ptr $ ASTT.FunctionType (llvmType rety) argtys False
+    argtys = [llvmType ty | TBinding _ ty <- args]
+
+genDef :: Definition -> Modgen AST.Operand
+-- main special case
+genDef (DFn name@(Ident "main") [] rety body) =
+  function (mangled name) [] ASTT.i32 $ const $ runCodegen $ bodyFor rety
+  where
+    bodyFor TInt32 = genBody [] body
+    bodyFor TEmpty = genBody [] body <* ret (int32 0)
+    bodyFor _ = error "`main` can only return empty or i32"
+genDef (DFn (Ident "main") _ _ _) = error "`main` must take no parameter"
+-- normal functions
+genDef (DFn name args rety body) =
+  function (mangled name) (genArg <$> args) (llvmType rety) $
+    \ops -> runCodegen $ genBody (argvals ops) body
+  where
+    argvals ops = zipWith bindOp ops args
+    bindOp op (TBinding pat ty) = (pat, ty, op)
+    genArg (TBinding pat t) = (llvmType t, ParameterName $ patName pat)
+
+newtype Codegen a = Codegen
+  { runCodegen :: IRBuilderT Modgen a
   }
   deriving
     ( Functor,
@@ -117,36 +176,20 @@ return' (Just v) = mkTerminator (ret v)
 br' :: AST.Name -> Codegen ()
 br' = mkTerminator . br
 
-genDef :: Definition -> ModuleBuilderT IO AST.Operand
--- main special case
-genDef (DFn (Ident "main") [] rety body) =
-  function (AST.mkName "__koa_main") [] LLVMType.i32 $
-    \ops -> runReaderT (runCodegen $ bodyFor rety ops) newScope
-  where
-    bodyFor TInt32 ops = genBody body ops
-    bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
-    bodyFor _ _ = error "`main` can only return empty or i32"
-genDef (DFn (Ident "main") _ _ _) = error "`main` must have no arguments"
--- normal functions
-genDef (DFn (Ident name) args rety body) =
-  function (AST.mkName name) (genArgs args) (llvmType rety) $
-    \ops -> runReaderT (runCodegen $ genBody body ops) newScope
-
-genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
-genArgs args = genArg <$> args
-  where
-    genArg (Ident pname, ptype) =
-      (llvmType ptype, ParameterName $ fromString pname)
-
-genBody :: [Stmt] -> [AST.Operand] -> Codegen ()
-genBody stmts [] = block `named` "entry" >> genAllStmts stmts (pure ())
-genBody _ _ = error "unimplemented body with arguments"
+genBody :: [(Pattern, Type, AST.Operand)] -> [Stmt] -> Codegen ()
+genBody args stmts =
+  block `named` "entry" >> genAllVarDefs args (genAllStmts stmts $ pure ())
 
 genAllStmts :: [Stmt] -> Codegen a -> Codegen a
 genAllStmts ss k = foldr genStmt k ss
 
 genStmt :: Stmt -> Codegen a -> Codegen a
-genStmt (SLet pat t expr) k = genStmtLet pat t expr k
+genStmt (SLet pat ty expr) k =
+  do
+    expr' <- genExpr expr
+    case expr' of
+      Nothing -> k
+      Just op -> genVarDef pat ty op k
 genStmt (SReturn e) k = (return' =<< genExpr e) >> k
 genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak e) k =
@@ -155,17 +198,16 @@ genStmt (SBreak e) k =
     Nothing <- genExpr e
     br' d >> k
 
-genStmtLet :: Pattern -> Type -> Expr -> Codegen a -> Codegen a
-genStmtLet PWildcard _ e k = genExpr e >> k
-genStmtLet _ TEmpty e k = genExpr e >> k
-genStmtLet (PIdent name) t expr k =
-  do
-    Just expr' <- genExpr expr
-    allocate name t expr' k
-genStmtLet (PMutIdent name) t expr k =
-  do
-    Just expr' <- genExpr expr
-    allocate name t expr' k
+genVarDef :: Pattern -> Type -> AST.Operand -> Codegen a -> Codegen a
+genVarDef PWildcard _ _ k = k
+genVarDef _ TEmpty _ k = k
+genVarDef (PIdent name) ty op k = allocate name ty op k
+genVarDef (PMutIdent name) ty op k = allocate name ty op k
+
+genAllVarDefs :: [(Pattern, Type, AST.Operand)] -> Codegen a -> Codegen a
+genAllVarDefs vars k = foldr def' k vars
+  where
+    def' (pat, t, op) k' = genVarDef pat t op k'
 
 allocate :: Ident -> Type -> AST.Operand -> Codegen a -> Codegen a
 allocate name t val k =
@@ -210,7 +252,11 @@ genExpr (ELoop bl) =
     case loopVal of
       Nothing -> pure Nothing
       Just _ -> error "unimplemented loop with non-void break"
-genExpr ECall {} = error "unimplemented genExpr.ECall"
+genExpr (ECall name args) =
+  do
+    f <- asks $ getVar name
+    args' <- catMaybes <$> mapM genExpr args
+    Just <$> call f [(a, []) | a <- args']
 genExpr (EAssign name e) = genAssign name e
 
 genBlock :: ShortByteString -> Block -> Codegen (AST.Name, Maybe AST.Operand)
@@ -226,19 +272,19 @@ genInlineBlock (Block stmts e) = genAllStmts stmts (genExpr e)
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
-genUnop ONot = icmp IPred.EQ (bit 0)
+genUnop ONot = icmp ASTIP.EQ (bit 0)
 
 genBinop :: Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
 genBinop OAdd = add
 genBinop OSub = sub
 genBinop OMul = mul
 genBinop ODiv = sdiv
-genBinop OEquals = icmp IPred.EQ
-genBinop ONotEquals = icmp IPred.NE
-genBinop OLessThan = icmp IPred.SLT
-genBinop OGreaterThan = icmp IPred.SGT
-genBinop OLessThanEq = icmp IPred.SLE
-genBinop OGreaterThanEq = icmp IPred.SGE
+genBinop OEquals = icmp ASTIP.EQ
+genBinop ONotEquals = icmp ASTIP.NE
+genBinop OLessThan = icmp ASTIP.SLT
+genBinop OGreaterThan = icmp ASTIP.SGT
+genBinop OLessThanEq = icmp ASTIP.SLE
+genBinop OGreaterThanEq = icmp ASTIP.SGE
 
 genIdent :: Ident -> Type -> Codegen (Maybe AST.Operand)
 genIdent _ TEmpty = pure Nothing
@@ -264,8 +310,8 @@ llvmConst (CBool True) = Just $ bit 1
 llvmConst (CBool False) = Just $ bit 0
 llvmConst CEmpty = Nothing
 
-llvmType :: Type -> LLVMType.Type
-llvmType TInt32 = LLVMType.i32
-llvmType TFloat64 = LLVMType.double
-llvmType TEmpty = LLVMType.void
-llvmType TBool = LLVMType.i1
+llvmType :: Type -> ASTT.Type
+llvmType TInt32 = ASTT.i32
+llvmType TFloat64 = ASTT.double
+llvmType TEmpty = ASTT.void
+llvmType TBool = ASTT.i1

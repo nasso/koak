@@ -1,0 +1,11 @@
+fn main(): i32 {
+  if second_param((), 4, ()) == 4 {
+    0
+  } else {
+    1
+  }
+}
+
+fn second_param(_: (), v: i32, _: ()): i32 {
+  v
+}

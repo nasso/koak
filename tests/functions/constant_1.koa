@@ -1,0 +1,7 @@
+fn random(): i32 {
+  4
+}
+
+fn main(): i32 {
+  random()
+}
