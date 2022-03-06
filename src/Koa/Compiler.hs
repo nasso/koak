@@ -19,8 +19,8 @@ import Data.String (IsString (fromString))
 import Koa.Syntax.MIR
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Constant as ASTC
-import qualified LLVM.AST.IntegerPredicate as IPred
-import qualified LLVM.AST.Type as LLVMType
+import qualified LLVM.AST.IntegerPredicate as ASTIP
+import qualified LLVM.AST.Type as ASTT
 import LLVM.Context
 import LLVM.IRBuilder
 import LLVM.Module
@@ -128,13 +128,13 @@ refTo :: Definition -> AST.Operand
 refTo (DFn name args rety _) =
   AST.ConstantOperand $ ASTC.GlobalReference funty (mangled name)
   where
-    funty = LLVMType.ptr $ LLVMType.FunctionType (llvmType rety) argtys False
+    funty = ASTT.ptr $ ASTT.FunctionType (llvmType rety) argtys False
     argtys = [llvmType ty | TBinding _ ty <- args]
 
 genDef :: Definition -> Modgen AST.Operand
 -- main special case
 genDef (DFn name@(Ident "main") [] rety body) =
-  function (mangled name) [] LLVMType.i32 $ const $ runCodegen $ bodyFor rety
+  function (mangled name) [] ASTT.i32 $ const $ runCodegen $ bodyFor rety
   where
     bodyFor TInt32 = genBody [] body
     bodyFor TEmpty = genBody [] body <* ret (int32 0)
@@ -272,19 +272,19 @@ genInlineBlock (Block stmts e) = genAllStmts stmts (genExpr e)
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
-genUnop ONot = icmp IPred.EQ (bit 0)
+genUnop ONot = icmp ASTIP.EQ (bit 0)
 
 genBinop :: Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
 genBinop OAdd = add
 genBinop OSub = sub
 genBinop OMul = mul
 genBinop ODiv = sdiv
-genBinop OEquals = icmp IPred.EQ
-genBinop ONotEquals = icmp IPred.NE
-genBinop OLessThan = icmp IPred.SLT
-genBinop OGreaterThan = icmp IPred.SGT
-genBinop OLessThanEq = icmp IPred.SLE
-genBinop OGreaterThanEq = icmp IPred.SGE
+genBinop OEquals = icmp ASTIP.EQ
+genBinop ONotEquals = icmp ASTIP.NE
+genBinop OLessThan = icmp ASTIP.SLT
+genBinop OGreaterThan = icmp ASTIP.SGT
+genBinop OLessThanEq = icmp ASTIP.SLE
+genBinop OGreaterThanEq = icmp ASTIP.SGE
 
 genIdent :: Ident -> Type -> Codegen (Maybe AST.Operand)
 genIdent _ TEmpty = pure Nothing
@@ -310,8 +310,8 @@ llvmConst (CBool True) = Just $ bit 1
 llvmConst (CBool False) = Just $ bit 0
 llvmConst CEmpty = Nothing
 
-llvmType :: Type -> LLVMType.Type
-llvmType TInt32 = LLVMType.i32
-llvmType TFloat64 = LLVMType.double
-llvmType TEmpty = LLVMType.void
-llvmType TBool = LLVMType.i1
+llvmType :: Type -> ASTT.Type
+llvmType TInt32 = ASTT.i32
+llvmType TFloat64 = ASTT.double
+llvmType TEmpty = ASTT.void
+llvmType TBool = ASTT.i1
