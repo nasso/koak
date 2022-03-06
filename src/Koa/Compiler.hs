@@ -19,6 +19,7 @@ import Data.String (IsString (fromString))
 import Koa.Syntax.MIR
 import qualified LLVM.AST as AST
 import qualified LLVM.AST.Constant as ASTC
+import qualified LLVM.AST.FloatingPointPredicate as ASTFP
 import qualified LLVM.AST.IntegerPredicate as ASTIP
 import qualified LLVM.AST.Type as ASTT
 import LLVM.Context
@@ -225,11 +226,11 @@ genExpr (EUnop operator e) =
     Just e' <- genExpr e
     Just <$> genUnop operator e'
 -- binary op
-genExpr (EBinop op left right) =
+genExpr (EBinop ty op left right) =
   do
     Just left' <- genExpr left
     Just right' <- genExpr right
-    Just <$> genBinop op left' right'
+    Just <$> genBinop ty op left' right'
 -- other
 genExpr (EVar t name) = genIdent name t
 genExpr (EBlock bl) = genInlineBlock bl
@@ -274,17 +275,28 @@ genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
 genUnop ONot = icmp ASTIP.EQ (bit 0)
 
-genBinop :: Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
-genBinop OAdd = add
-genBinop OSub = sub
-genBinop OMul = mul
-genBinop ODiv = sdiv
-genBinop OEquals = icmp ASTIP.EQ
-genBinop ONotEquals = icmp ASTIP.NE
-genBinop OLessThan = icmp ASTIP.SLT
-genBinop OGreaterThan = icmp ASTIP.SGT
-genBinop OLessThanEq = icmp ASTIP.SLE
-genBinop OGreaterThanEq = icmp ASTIP.SGE
+genBinop :: Type -> Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
+genBinop TInt32 OAdd = add
+genBinop TFloat64 OAdd = fadd
+genBinop TInt32 OSub = sub
+genBinop TFloat64 OSub = fsub
+genBinop TInt32 OMul = mul
+genBinop TFloat64 OMul = fmul
+genBinop TInt32 ODiv = sdiv
+genBinop TFloat64 ODiv = fdiv
+genBinop TInt32 OEquals = icmp ASTIP.EQ
+genBinop TFloat64 OEquals = fcmp ASTFP.OEQ
+genBinop TInt32 ONotEquals = icmp ASTIP.NE
+genBinop TFloat64 ONotEquals = fcmp ASTFP.ONE
+genBinop TInt32 OLessThan = icmp ASTIP.SLT
+genBinop TFloat64 OLessThan = fcmp ASTFP.OLT
+genBinop TInt32 OGreaterThan = icmp ASTIP.SGT
+genBinop TFloat64 OGreaterThan = fcmp ASTFP.OGT
+genBinop TInt32 OLessThanEq = icmp ASTIP.SLE
+genBinop TFloat64 OLessThanEq = fcmp ASTFP.OLE
+genBinop TInt32 OGreaterThanEq = icmp ASTIP.SGE
+genBinop TFloat64 OGreaterThanEq = fcmp ASTFP.OGE
+genBinop ty op = error $ "unimplemented binop: " ++ show ty ++ " " ++ show op
 
 genIdent :: Ident -> Type -> Codegen (Maybe AST.Operand)
 genIdent _ TEmpty = pure Nothing
