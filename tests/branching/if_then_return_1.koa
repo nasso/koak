@@ -1,0 +1,9 @@
+fn main(): i32 {
+  let a = 10;
+
+  if a != 10 {
+    return 1;
+  };
+
+  0
+}

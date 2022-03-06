@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecursiveDo #-}
 
 module Koa.Compiler
   ( CompilerConfig (..),
@@ -9,6 +10,7 @@ module Koa.Compiler
 where
 
 import Control.Monad.Reader
+import Data.ByteString.Short (ShortByteString)
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
@@ -90,6 +92,7 @@ newtype Codegen a = Codegen
     ( Functor,
       Applicative,
       Monad,
+      MonadFix,
       MonadFail,
       MonadReader Scope,
       MonadIRBuilder,
@@ -105,6 +108,9 @@ mkTerminator t =
 return' :: Maybe AST.Operand -> Codegen ()
 return' Nothing = mkTerminator retVoid
 return' (Just v) = mkTerminator (ret v)
+
+br' :: AST.Name -> Codegen ()
+br' = mkTerminator . br
 
 genDef :: Definition -> ModuleBuilderT IO AST.Operand
 -- main special case
@@ -175,14 +181,31 @@ genExpr (EBinop op left right) =
     Just <$> genBinop op left' right'
 -- other
 genExpr (EVar t name) = genIdent name t
-genExpr (EBlock bl) = genBlock bl
-genExpr EIf {} = error "unimplemented genExpr.EIf"
+genExpr (EBlock bl) = genInlineBlock bl
+genExpr (EIf cond then' else') =
+  mdo
+    Just cond' <- genExpr cond
+    condBr cond' thenBlock elseBlock
+    (thenBlock, thenVal) <- genBlock "then" then' <* br' mergeBlock
+    (elseBlock, elseVal) <- genBlock "else" else' <* br' mergeBlock
+    mergeBlock <- block `named` "merge"
+    case (thenVal, elseVal) of
+      (Just thenVal', Just elseVal') ->
+        Just <$> phi [(thenVal', thenBlock), (elseVal', elseBlock)]
+      _ -> pure Nothing
 genExpr ELoop {} = error "unimplemented genExpr.ELoop"
 genExpr ECall {} = error "unimplemented genExpr.ECall"
 genExpr (EAssign name e) = genAssign name e
 
-genBlock :: Block -> Codegen (Maybe AST.Operand)
-genBlock (Block stmts e) = genAllStmts stmts $ genExpr e
+genBlock :: ShortByteString -> Block -> Codegen (AST.Name, Maybe AST.Operand)
+genBlock label bl =
+  do
+    name <- block `named` label
+    res <- genInlineBlock bl
+    pure (name, res)
+
+genInlineBlock :: Block -> Codegen (Maybe AST.Operand)
+genInlineBlock (Block stmts e) = genAllStmts stmts (genExpr e)
 
 genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
 genUnop ONeg = sub (int32 0)
