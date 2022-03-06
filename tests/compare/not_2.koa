@@ -1,0 +1,9 @@
+fn main(): i32 {
+  let a = true;
+
+  if !a {
+    1
+  } else {
+    0
+  }
+}
