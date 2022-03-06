@@ -162,31 +162,46 @@ def main(test_paths: list[str], jobs_count: int) -> None:
     for test_path in test_paths:
         # remove trailing '/'
         test_path = test_path.rstrip('/')
-        # iterate on each subdirectory
-        for (dir, _, files) in os.walk(test_path):
-            test_suite_name = dir.split('/')[-1]
-            indent = dir.count('/')
-            print(indent * INDENT + test_suite_name + ':')
 
-            # retrieve each file in the current directory ending with .koa
-            sources = [f'{dir}/{f}' for f in files if f.endswith('.koa')]
+        if os.path.isdir(test_path):
+            # iterate on each subdirectory
+            for (dir, _, files) in os.walk(test_path):
+                test_suite_name = dir.split('/')[-1]
+                indent = dir[len(test_path):].count('/')
+                print(indent * INDENT + test_suite_name + ':')
 
-            with Pool(processes=jobs_count) as pool:
-                # run tests in parallel
-                for res, output in pool.imap(run_test, sources):
-                    if res:
-                        # if test has succeeded
-                        success_count += 1
-                        print((indent + 1) * INDENT + output, end='')
-                    else:
-                        # if test has failed
-                        failure_count += 1
-                        print('>' * 80)
-                        print((indent + 1) * INDENT + output, end='')
-                        print('<' * 80)
+                # retrieve each file in the current directory ending with .koa
+                sources = [f'{dir}/{f}' for f in files if f.endswith('.koa')]
+
+                with Pool(processes=jobs_count) as pool:
+                    # run tests in parallel
+                    for res, output in pool.imap(run_test, sources):
+                        if res:
+                            # if test has succeeded
+                            success_count += 1
+                            print((indent + 1) * INDENT + output, end='')
+                        else:
+                            # if test has failed
+                            failure_count += 1
+                            print('>' * 80)
+                            print((indent + 1) * INDENT + output, end='')
+                            print('<' * 80)
+        else:
+            # if the path is a file, then run the test
+            res, output = run_test(test_path)
+            if res:
+                # if test has succeeded
+                success_count += 1
+                print(output, end='')
+            else:
+                # if test has failed
+                failure_count += 1
+                print('>' * 80)
+                print(output, end='')
+                print('<' * 80)
 
     # print summary and exit
-    print('\n')
+    print()
 
     if failure_count == 0:
         print(f'{success_count} tests passed')
