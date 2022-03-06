@@ -23,5 +23,5 @@ stack test
 # to run only some tests (matching a pattern)
 stack test --ta '-p Parser'
 stack test --ta '-p Analyser'
-stack test --ta '-p Analyser.minimal'
+stack test --ta '-p Analyser.Functions'
 ```
