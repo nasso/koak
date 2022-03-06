@@ -10,8 +10,11 @@ newtype Ident = Ident String deriving (Eq, Show)
 
 -- | A definition.
 data Definition
-  = DFn Ident [(Ident, Type)] Type [Stmt]
+  = DFn Ident [TBinding] Type [Stmt]
   deriving (Eq, Show)
+
+-- | An arbitrary identifier binding (e.g. a function parameter).
+data TBinding = TBinding Pattern Type deriving (Eq, Show)
 
 -- | A statement (@let@, @return@, or an expression with side-effects).
 data Stmt

@@ -65,6 +65,11 @@ genModule (Program defs) =
 mangled :: Ident -> AST.Name
 mangled (Ident name) = AST.mkName $ "__koa_" <> name
 
+patName :: IsString p => Pattern -> p
+patName (PIdent (Ident n)) = fromString n
+patName (PMutIdent (Ident n)) = fromString n
+patName PWildcard = fromString "unused_parameter"
+
 data Scope = Scope
   { scpVars :: HashMap String AST.Operand,
     scpBreakDest :: Maybe AST.Name
@@ -124,7 +129,7 @@ refTo (DFn name args rety _) =
   AST.ConstantOperand $ ASTC.GlobalReference funty (mangled name)
   where
     funty = LLVMType.ptr $ LLVMType.FunctionType (llvmType rety) argtys False
-    argtys = llvmType . snd <$> args
+    argtys = [llvmType ty | TBinding _ ty <- args]
 
 genDef :: Definition -> Modgen AST.Operand
 -- main special case
@@ -140,8 +145,9 @@ genDef (DFn name args rety body) =
   function (mangled name) (genArg <$> args) (llvmType rety) $
     \ops -> runCodegen $ genBody (argvals ops) body
   where
-    argvals = uncurry zip3 (unzip args)
-    genArg (Ident n, t) = (llvmType t, ParameterName $ fromString n)
+    argvals ops = zipWith bindOp ops args
+    bindOp op (TBinding pat ty) = (pat, ty, op)
+    genArg (TBinding pat t) = (llvmType t, ParameterName $ patName pat)
 
 newtype Codegen a = Codegen
   { runCodegen :: IRBuilderT Modgen a
@@ -170,15 +176,20 @@ return' (Just v) = mkTerminator (ret v)
 br' :: AST.Name -> Codegen ()
 br' = mkTerminator . br
 
-genBody :: [(Ident, Type, AST.Operand)] -> [Stmt] -> Codegen ()
+genBody :: [(Pattern, Type, AST.Operand)] -> [Stmt] -> Codegen ()
 genBody args stmts =
-  block `named` "entry" >> allocateAll args (genAllStmts stmts $ pure ())
+  block `named` "entry" >> genAllVarDefs args (genAllStmts stmts $ pure ())
 
 genAllStmts :: [Stmt] -> Codegen a -> Codegen a
 genAllStmts ss k = foldr genStmt k ss
 
 genStmt :: Stmt -> Codegen a -> Codegen a
-genStmt (SLet pat t expr) k = genStmtLet pat t expr k
+genStmt (SLet pat ty expr) k =
+  do
+    expr' <- genExpr expr
+    case expr' of
+      Nothing -> k
+      Just op -> genVarDef pat ty op k
 genStmt (SReturn e) k = (return' =<< genExpr e) >> k
 genStmt (SExpr e) k = genExpr e >> k
 genStmt (SBreak e) k =
@@ -187,17 +198,16 @@ genStmt (SBreak e) k =
     Nothing <- genExpr e
     br' d >> k
 
-genStmtLet :: Pattern -> Type -> Expr -> Codegen a -> Codegen a
-genStmtLet PWildcard _ e k = genExpr e >> k
-genStmtLet _ TEmpty e k = genExpr e >> k
-genStmtLet (PIdent name) t expr k =
-  do
-    Just expr' <- genExpr expr
-    allocate name t expr' k
-genStmtLet (PMutIdent name) t expr k =
-  do
-    Just expr' <- genExpr expr
-    allocate name t expr' k
+genVarDef :: Pattern -> Type -> AST.Operand -> Codegen a -> Codegen a
+genVarDef PWildcard _ _ k = k
+genVarDef _ TEmpty _ k = k
+genVarDef (PIdent name) ty op k = allocate name ty op k
+genVarDef (PMutIdent name) ty op k = allocate name ty op k
+
+genAllVarDefs :: [(Pattern, Type, AST.Operand)] -> Codegen a -> Codegen a
+genAllVarDefs vars k = foldr def' k vars
+  where
+    def' (pat, t, op) k' = genVarDef pat t op k'
 
 allocate :: Ident -> Type -> AST.Operand -> Codegen a -> Codegen a
 allocate name t val k =
@@ -205,11 +215,6 @@ allocate name t val k =
     addr <- alloca (llvmType t) Nothing 0
     store addr 0 val
     local (setVar name addr) k
-
-allocateAll :: [(Ident, Type, AST.Operand)] -> Codegen a -> Codegen a
-allocateAll vars k = foldr allocate' k vars
-  where
-    allocate' (name, t, val) k' = allocate name t val k'
 
 genExpr :: Expr -> Codegen (Maybe AST.Operand)
 -- literal

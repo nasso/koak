@@ -8,13 +8,15 @@ program :: HIR.ProgramT -> Analyser MIR.Program
 program (HIR.Program defs) = MIR.Program <$> mapM def defs
 
 def :: HIR.DefinitionT -> Analyser MIR.Definition
-def (HIR.DFn name bindings ty bod) =
-  do
-    name' <- ident name
-    (argNames, argTys, argInits) <- unzip3 <$> allBindings bindings
-    ty' <- type' ty
-    bod' <- funBody bod
-    pure $ MIR.DFn name' (zip argNames argTys) ty' $ argInits ++ bod'
+def (HIR.DFn name args ty bod) =
+  MIR.DFn
+    <$> ident name
+    <*> mapM binding args
+    <*> type' ty
+    <*> funBody bod
+
+binding :: HIR.TBinding -> Analyser MIR.TBinding
+binding (HIR.TBinding pat ty) = MIR.TBinding <$> pattern' pat <*> type' ty
 
 funBody :: HIR.BlockT -> Analyser [MIR.Stmt]
 funBody (HIR.BExpr stmts Nothing) = mapM stmt stmts
@@ -26,21 +28,6 @@ funBody (HIR.BExpr stmts (Just e)) =
 
 ident :: HIR.Ident -> Analyser MIR.Ident
 ident (HIR.Ident i) = pure $ MIR.Ident i
-
-allBindings :: [HIR.TBinding] -> Analyser [(MIR.Ident, MIR.Type, MIR.Stmt)]
-allBindings bindings =
-  mapM namedBinding namedBindings
-  where
-    names = MIR.Ident . ("arg" ++) . show <$> [0 :: Word ..]
-    namedBindings = zip names bindings
-    namedBinding (name, b) = uncurry ((,,) name) <$> binding name b
-
-binding :: MIR.Ident -> HIR.TBinding -> Analyser (MIR.Type, MIR.Stmt)
-binding name (HIR.TBinding pat ty) =
-  do
-    ty' <- type' ty
-    pat' <- pattern' pat
-    pure (ty', MIR.SLet pat' ty' $ MIR.EVar ty' name)
 
 pattern' :: HIR.Pattern -> Analyser MIR.Pattern
 pattern' HIR.PWildcard = pure MIR.PWildcard
