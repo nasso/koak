@@ -1,0 +1,9 @@
+fn main(): i32 {
+  let mut a = 45;
+
+  for let mut i = 0, i < 10, i = i + 1 {
+    a = a - i;
+  };
+
+  a
+}
