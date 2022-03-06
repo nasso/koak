@@ -14,6 +14,7 @@ import Data.ByteString.Short (ShortByteString)
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HM
+import Data.Maybe
 import Data.String (IsString (fromString))
 import Koa.Syntax.MIR
 import qualified LLVM.AST as AST
@@ -128,17 +129,19 @@ refTo (DFn name args rety _) =
 genDef :: Definition -> Modgen AST.Operand
 -- main special case
 genDef (DFn name@(Ident "main") [] rety body) =
-  function (mangled name) [] LLVMType.i32 $
-    \ops -> runCodegen $ bodyFor rety ops
+  function (mangled name) [] LLVMType.i32 $ const $ runCodegen $ bodyFor rety
   where
-    bodyFor TInt32 ops = genBody body ops
-    bodyFor TEmpty ops = genBody body ops <* ret (int32 0)
-    bodyFor _ _ = error "`main` can only return empty or i32"
+    bodyFor TInt32 = genBody [] body
+    bodyFor TEmpty = genBody [] body <* ret (int32 0)
+    bodyFor _ = error "`main` can only return empty or i32"
 genDef (DFn (Ident "main") _ _ _) = error "`main` must take no parameter"
 -- normal functions
 genDef (DFn name args rety body) =
-  function (mangled name) (genArgs args) (llvmType rety) $
-    \ops -> runCodegen $ genBody body ops
+  function (mangled name) (genArg <$> args) (llvmType rety) $
+    \ops -> runCodegen $ genBody (argvals ops) body
+  where
+    argvals = uncurry zip3 (unzip args)
+    genArg (Ident n, t) = (llvmType t, ParameterName $ fromString n)
 
 newtype Codegen a = Codegen
   { runCodegen :: IRBuilderT Modgen a
@@ -167,15 +170,9 @@ return' (Just v) = mkTerminator (ret v)
 br' :: AST.Name -> Codegen ()
 br' = mkTerminator . br
 
-genArgs :: [(Ident, Type)] -> [(LLVMType.Type, ParameterName)]
-genArgs args = genArg <$> args
-  where
-    genArg (Ident pname, ptype) =
-      (llvmType ptype, ParameterName $ fromString pname)
-
-genBody :: [Stmt] -> [AST.Operand] -> Codegen ()
-genBody stmts [] = block `named` "entry" >> genAllStmts stmts (pure ())
-genBody _ _ = error "unimplemented body with arguments"
+genBody :: [(Ident, Type, AST.Operand)] -> [Stmt] -> Codegen ()
+genBody args stmts =
+  block `named` "entry" >> allocateAll args (genAllStmts stmts $ pure ())
 
 genAllStmts :: [Stmt] -> Codegen a -> Codegen a
 genAllStmts ss k = foldr genStmt k ss
@@ -208,6 +205,11 @@ allocate name t val k =
     addr <- alloca (llvmType t) Nothing 0
     store addr 0 val
     local (setVar name addr) k
+
+allocateAll :: [(Ident, Type, AST.Operand)] -> Codegen a -> Codegen a
+allocateAll vars k = foldr allocate' k vars
+  where
+    allocate' (name, t, val) k' = allocate name t val k'
 
 genExpr :: Expr -> Codegen (Maybe AST.Operand)
 -- literal
@@ -245,11 +247,11 @@ genExpr (ELoop bl) =
     case loopVal of
       Nothing -> pure Nothing
       Just _ -> error "unimplemented loop with non-void break"
-genExpr (ECall name []) =
+genExpr (ECall name args) =
   do
     f <- asks $ getVar name
-    Just <$> call f []
-genExpr (ECall _ _) = error "unimplemented call with arguments"
+    args' <- catMaybes <$> mapM genExpr args
+    Just <$> call f [(a, []) | a <- args']
 genExpr (EAssign name e) = genAssign name e
 
 genBlock :: ShortByteString -> Block -> Codegen (AST.Name, Maybe AST.Operand)
