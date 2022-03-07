@@ -221,10 +221,10 @@ genExpr :: Expr -> Codegen (Maybe AST.Operand)
 -- literal
 genExpr (EConst c) = pure $ llvmConst c
 -- unary op
-genExpr (EUnop operator e) =
+genExpr (EUnop ty operator e) =
   do
     Just e' <- genExpr e
-    Just <$> genUnop operator e'
+    Just <$> genUnop ty operator e'
 -- binary op
 genExpr (EBinop ty op left right) =
   do
@@ -271,9 +271,11 @@ genBlock label bl =
 genInlineBlock :: Block -> Codegen (Maybe AST.Operand)
 genInlineBlock (Block stmts e) = genAllStmts stmts (genExpr e)
 
-genUnop :: Unop -> AST.Operand -> Codegen AST.Operand
-genUnop ONeg = sub (int32 0)
-genUnop ONot = icmp ASTIP.EQ (bit 0)
+genUnop :: Type -> Unop -> AST.Operand -> Codegen AST.Operand
+genUnop TInt32 ONeg = sub (int32 0)
+genUnop TFloat64 ONeg = fsub (double 0)
+genUnop TBool ONot = icmp ASTIP.EQ (bit 0)
+genUnop ty op = error $ "unimplemented unop: " ++ show ty ++ " " ++ show op
 
 genBinop :: Type -> Binop -> AST.Operand -> AST.Operand -> Codegen AST.Operand
 genBinop TInt32 OAdd = add

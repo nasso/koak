@@ -40,7 +40,7 @@ data Expr
   | ECall Ident [Expr]
   | EAssign Ident Expr
   | EBinop Type Binop Expr Expr
-  | EUnop Unop Expr
+  | EUnop Type Unop Expr
   | EConst Constant
   deriving (Eq, Show)
 
