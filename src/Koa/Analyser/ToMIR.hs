@@ -72,7 +72,8 @@ expr (HIR.ExprT (HIR.ECall name args, _)) =
 expr (HIR.ExprT (HIR.EAssign name e, _)) = MIR.EAssign <$> ident name <*> expr e
 expr (HIR.ExprT (HIR.EBinop op lhs rhs, _)) =
   MIR.EBinop <$> typeOf lhs <*> binop op <*> expr lhs <*> expr rhs
-expr (HIR.ExprT (HIR.EUnop op e, _)) = MIR.EUnop <$> unop op <*> expr e
+expr (HIR.ExprT (HIR.EUnop op e, _)) =
+  MIR.EUnop <$> typeOf e <*> unop op <*> expr e
 expr (HIR.ExprT (HIR.ELit lit, ty)) = MIR.EConst <$> lit' ty lit
 
 typeOf :: HIR.ExprT -> Analyser MIR.Type
